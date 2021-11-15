@@ -340,11 +340,11 @@ impl<P: Platform> ServiceResources<P> {
             Request::ReadDirFirst(request) => {
                 let maybe_entry = match filestore.read_dir_first(&request.dir, request.location, request.not_before_filename.as_ref())? {
                     Some((entry, read_dir_state)) => {
-                        self.read_dir_state = Some(read_dir_state);
+                        client_id.read_dir_state = Some(read_dir_state);
                         Some(entry)
                     }
                     None => {
-                        self.read_dir_state = None;
+                        client_id.read_dir_state = None;
                         None
 
                     }
@@ -354,18 +354,18 @@ impl<P: Platform> ServiceResources<P> {
 
             Request::ReadDirNext(_request) => {
                 // ensure next call has nothing to work with, unless we store state again
-                let read_dir_state = self.read_dir_state.take();
+                let read_dir_state = client_id.read_dir_state.take();
 
                 let maybe_entry = match read_dir_state {
                     None => None,
                     Some(state) => {
                         match filestore.read_dir_next(state)? {
                             Some((entry, read_dir_state)) => {
-                                self.read_dir_state = Some(read_dir_state);
+                                client_id.read_dir_state = Some(read_dir_state);
                                 Some(entry)
                             }
                             None => {
-                                self.read_dir_state = None;
+                                client_id.read_dir_state = None;
                                 None
                             }
                         }
@@ -378,11 +378,11 @@ impl<P: Platform> ServiceResources<P> {
             Request::ReadDirFilesFirst(request) => {
                 let maybe_data = match filestore.read_dir_files_first(&request.dir, request.location, request.user_attribute.clone())? {
                     Some((data, state)) => {
-                        self.read_dir_files_state = Some(state);
+                        client_id.read_dir_files_state = Some(state);
                         data
                     }
                     None => {
-                        self.read_dir_files_state = None;
+                        client_id.read_dir_files_state = None;
                         None
                     }
                 };
@@ -390,18 +390,18 @@ impl<P: Platform> ServiceResources<P> {
             }
 
             Request::ReadDirFilesNext(_request) => {
-                let read_dir_files_state = self.read_dir_files_state.take();
+                let read_dir_files_state = client_id.read_dir_files_state.take();
 
                 let maybe_data = match read_dir_files_state {
                     None => None,
                     Some(state) => {
                         match filestore.read_dir_files_next(state)? {
                             Some((data, state)) => {
-                                self.read_dir_files_state = Some(state);
+                                client_id.read_dir_files_state = Some(state);
                                 data
                             }
                             None => {
-                                self.read_dir_files_state = None;
+                                client_id.read_dir_files_state = None;
                                 None
                             }
                         }
