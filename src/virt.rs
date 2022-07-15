@@ -12,7 +12,13 @@ use chacha20::ChaCha8Rng;
 use rand_core::SeedableRng as _;
 
 use crate::{
-    pipe::TrussedInterchange, platform, service::Service, ClientImplementation, Interchange as _,
+    api::{Reply, Request},
+    error::Error,
+    pipe::TrussedInterchange,
+    platform,
+    service::Service,
+    types::{ClientContext, ServiceBackends},
+    ClientImplementation, Interchange as _,
 };
 
 pub use store::{Filesystem, Ram, StoreProvider};
@@ -101,5 +107,14 @@ unsafe impl<S: StoreProvider> platform::Platform for Platform<S> {
 
     fn store(&self) -> Self::S {
         unsafe { S::store() }
+    }
+
+    fn platform_reply_to(
+        &mut self,
+        _backend_id: ServiceBackends,
+        _client_id: &mut ClientContext,
+        _request: &Request,
+    ) -> Result<Reply, Error> {
+        Err(Error::RequestNotAvailable)
     }
 }
