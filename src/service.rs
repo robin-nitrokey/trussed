@@ -574,13 +574,33 @@ impl<P: Platform> ServiceResources<P> {
             Request::SetServiceBackends(request) => {
                 /* as long as we don't do backend selection per syscall,
                    reject clients that want to drop the software backend;
-		   otherwise they will never be able to switch again! */
+		           otherwise they will never be able to switch again! */
                 if !request.backends.contains(&ServiceBackends::Software) {
                     return Err(Error::InternalError);
                 }
                 client_ctx.backends.clear();
                 client_ctx.backends.extend_from_slice(&request.backends).unwrap();
                 Ok(Reply::SetServiceBackends(reply::SetServiceBackends {}))
+            }
+
+            Request::SetAuthContext(_) => {
+                Err(Error::RequestNotAvailable)
+            }
+
+            Request::CheckAuthContext(_) => {
+                Err(Error::RequestNotAvailable)
+            }
+
+            Request::WriteAuthContext(_) => {
+                Err(Error::RequestNotAvailable)
+            }
+
+            Request::SetCreationPolicy(_) => {
+                Err(Error::RequestNotAvailable)
+            }
+
+            Request::GetAuthRetriesLeft(_) => {
+                Err(Error::RequestNotAvailable)
             }
 
             // _ => {
