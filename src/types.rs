@@ -1,6 +1,7 @@
 use core::fmt::Debug;
 use core::marker::PhantomData;
 use core::ops::Deref;
+use modular_bitfield::{bitfield, specifiers::*};
 
 pub use generic_array::GenericArray;
 
@@ -76,6 +77,10 @@ impl Id {
         let array = self.0.to_be_bytes();
 
         for i in 0..array.len() {
+            if array[i] == 0 && i != (array.len() - 1) {
+                // Skip leading zeros.
+                continue;
+            }
             buffer.push(HEX_CHARS[(array[i] >> 4) as usize]).unwrap();
             buffer.push(HEX_CHARS[(array[i] & 0xf) as usize]).unwrap();
         }
@@ -240,6 +245,9 @@ pub struct ClientContext<B: 'static> {
     pub backends: &'static [ServiceBackends<B>],
     pub(crate) read_dir_state: Option<ReadDirState>,
     pub(crate) read_dir_files_state: Option<ReadDirFilesState>,
+    pub(crate) context: AuthContextID,
+    pub(crate) pin: Bytes<MAX_PIN_LENGTH>,
+    pub(crate) creation_policy: Policy,
 }
 
 impl<B: 'static> From<PathBuf> for ClientContext<B> {
@@ -261,6 +269,9 @@ impl<B: 'static> ClientContext<B> {
             backends,
             read_dir_state: None,
             read_dir_files_state: None,
+            context: AuthContextID::Unauthorized,
+            pin: Bytes::new(),
+            creation_policy: Policy::new(),
         }
     }
 }
@@ -302,6 +313,105 @@ impl<P: Platform> Backends<P> for () {
     fn select(&mut self, _backend: &P::B) -> Option<&mut dyn ServiceBackend<P>> {
         None
     }
+}
+
+#[bitfield]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct Permission {
+    pub read: bool,
+    pub write: bool,
+    pub encrypt: bool,
+    pub decrypt: bool,
+    pub agree: bool,
+    pub sign: bool,
+    pub verify: bool,
+    pub attest: bool,
+    pub derive: bool,
+    //pub deserialize: bool,
+    pub serialize: bool,
+    pub wrap: bool,
+    pub unwrap: bool,
+    /* TODO: create a useful intersection of Trussed syscalls and SE050 policy bits */
+    #[skip]
+    _unused: B20,
+}
+
+impl Permission {
+    pub fn unpack(self) -> u32 {
+        let bytes: [u8; 4] = self.into_bytes();
+        u32::from_le_bytes(bytes)
+    }
+    pub fn pack(val: u32) -> Self {
+        let bytes: [u8; 4] = u32::to_le_bytes(val);
+        Self::from_bytes(bytes)
+    }
+    pub fn is_single_permission(self) -> bool {
+        let val = self.unpack();
+        // fancy trick that checks whether value is a power of two (= exactly one bit set)
+        (val & (val - 1)) == 0
+    }
+    pub fn with_all(&self) -> Self {
+        self.with_read(true)
+            .with_write(true)
+            .with_encrypt(true)
+            .with_decrypt(true)
+            .with_agree(true)
+            .with_sign(true)
+            .with_verify(true)
+            .with_attest(true)
+            .with_derive(true)
+            .with_serialize(true)
+            .with_wrap(true)
+            .with_unwrap(true)
+        //.with_deserialize(true)
+    }
+}
+
+/* three auth levels should be enough for everybody */
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct Policy {
+    unauthorized: Permission,
+    user: Permission,
+    admin: Permission,
+}
+
+impl Policy {
+    pub fn new() -> Self {
+        Self {
+            unauthorized: Permission::new(),
+            user: Permission::new(),
+            admin: Permission::new(),
+        }
+    }
+
+    pub fn set_unauthorized(&mut self, permission: Permission) {
+        self.unauthorized = permission;
+    }
+
+    pub fn set_user(&mut self, permission: Permission) {
+        self.user = permission;
+    }
+
+    pub fn set_admin(&mut self, permission: Permission) {
+        self.admin = permission;
+    }
+
+    pub fn is_permitted(&self, context_id: AuthContextID, op: Permission) -> bool {
+        assert!(op.is_single_permission());
+        let effective_set = match context_id {
+            AuthContextID::Unauthorized => self.unauthorized,
+            AuthContextID::User => self.user,
+            AuthContextID::Admin => self.admin,
+        };
+        (effective_set.unpack() & op.unpack()) != 0
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub enum AuthContextID {
+    Unauthorized = 0,
+    User = 1,
+    Admin = 2,
 }
 
 // Object Hierarchy according to Cryptoki
@@ -585,6 +695,7 @@ pub enum Mechanism {
 pub type LongData = Bytes<MAX_LONG_DATA_LENGTH>;
 pub type MediumData = Bytes<MAX_MEDIUM_DATA_LENGTH>;
 pub type ShortData = Bytes<MAX_SHORT_DATA_LENGTH>;
+pub type PinData = Bytes<MAX_PIN_LENGTH>;
 
 pub type Message = Bytes<MAX_MESSAGE_LENGTH>;
 

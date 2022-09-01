@@ -57,6 +57,7 @@ pub trait UserInterface {
 // This is the same trick as in "store.rs",
 // replacing generic parameters with associated types
 // and a macro.
+
 pub unsafe trait Platform {
     type B: 'static + PartialEq;
     type I: Interchange<REQUEST = Request<Self::B>, RESPONSE = Result<Reply>> + 'static;

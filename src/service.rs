@@ -592,6 +592,26 @@ impl<P: Platform> ServiceResources<P> {
                 Ok(Reply::SetServiceBackends(reply::SetServiceBackends {}))
             }
 
+            Request::SetAuthContext(_) => {
+                Err(Error::RequestNotAvailable)
+            }
+
+            Request::CheckAuthContext(_) => {
+                Err(Error::RequestNotAvailable)
+            }
+
+            Request::WriteAuthContext(_) => {
+                Err(Error::RequestNotAvailable)
+            }
+
+            Request::SetCreationPolicy(_) => {
+                Err(Error::RequestNotAvailable)
+            }
+
+            Request::GetAuthRetriesLeft(_) => {
+                Err(Error::RequestNotAvailable)
+            }
+
             // _ => {
             //     // #[cfg(test)]
             //     // println!("todo: {:?} request!", &request);

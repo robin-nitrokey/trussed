@@ -121,10 +121,6 @@ pub trait PollClient<B: 'static> {
     ) -> ClientResult<'_, T, B, Self>;
     fn poll(&mut self) -> core::task::Poll<core::result::Result<Reply, Error>>;
     fn syscall(&mut self);
-    fn set_service_backends(
-        &mut self,
-        backends: &'static [ServiceBackends<B>],
-    ) -> ClientResult<'_, reply::SetServiceBackends, B, Self>;
 }
 
 pub struct FutureResult<'c, T, B: 'static, C: ?Sized>
@@ -249,15 +245,6 @@ where
 
     fn syscall(&mut self) {
         self.syscall.syscall()
-    }
-
-    fn set_service_backends(
-        &mut self,
-        backends: &'static [ServiceBackends<B>],
-    ) -> ClientResult<'_, reply::SetServiceBackends, B, Self> {
-        let r = self.request(request::SetServiceBackends { backends })?;
-        r.client.syscall();
-        Ok(r)
     }
 }
 
@@ -804,6 +791,73 @@ pub trait ManagementClient<B: 'static>: PollClient<B> {
 
     fn uptime(&mut self) -> ClientResult<'_, reply::Uptime, B, Self> {
         let r = self.request(request::Uptime {})?;
+        r.client.syscall();
+        Ok(r)
+    }
+
+    fn set_service_backends(
+        &mut self,
+        backends: &'static [ServiceBackends<B>],
+    ) -> ClientResult<'_, reply::SetServiceBackends, B, Self> {
+        let r = self.request(request::SetServiceBackends { backends })?;
+        r.client.syscall();
+        Ok(r)
+    }
+
+    fn set_auth_context(
+        &mut self,
+        context: AuthContextID,
+        pin: &[u8],
+    ) -> ClientResult<'_, reply::SetAuthContext, B, Self> {
+        let pin_bytes = Bytes::from_slice(&pin).map_err(|_| ClientError::DataTooLarge)?;
+        let r = self.request(request::SetAuthContext {
+            context,
+            pin: pin_bytes,
+        })?;
+        r.client.syscall();
+        Ok(r)
+    }
+
+    fn set_creation_policy(
+        &mut self,
+        policy: Policy,
+    ) -> ClientResult<'_, reply::SetCreationPolicy, B, Self> {
+        let r = self.request(request::SetCreationPolicy { policy })?;
+        r.client.syscall();
+        Ok(r)
+    }
+
+    fn check_auth_context(
+        &mut self,
+        context: AuthContextID,
+        pin: &[u8],
+    ) -> ClientResult<'_, reply::CheckAuthContext, B, Self> {
+        let pin_bytes = Bytes::from_slice(&pin).map_err(|_| ClientError::DataTooLarge)?;
+        let r = self.request(request::CheckAuthContext {
+            context,
+            pin: pin_bytes,
+        })?;
+        r.client.syscall();
+        Ok(r)
+    }
+
+    fn get_auth_retries_left(
+        &mut self,
+        context: AuthContextID,
+    ) -> ClientResult<'_, reply::GetAuthRetriesLeft, B, Self> {
+        let r = self.request(request::GetAuthRetriesLeft { context })?;
+        r.client.syscall();
+        Ok(r)
+    }
+
+    fn write_auth_context(
+        &mut self,
+        new_pin: &[u8],
+    ) -> ClientResult<'_, reply::WriteAuthContext, B, Self> {
+        let new_pin_bytes = Bytes::from_slice(&new_pin).map_err(|_| ClientError::DataTooLarge)?;
+        let r = self.request(request::WriteAuthContext {
+            new_pin: new_pin_bytes,
+        })?;
         r.client.syscall();
         Ok(r)
     }

@@ -104,6 +104,15 @@ generate_enums! {
     ///////////////////
     SetServiceBackends<B>: 90
 
+    ///////////////////////////
+    // Software Auth Backend //
+    ///////////////////////////
+    SetCreationPolicy: 91
+    SetAuthContext: 92
+    CheckAuthContext: 93
+    WriteAuthContext: 94
+    GetAuthRetriesLeft: 95
+
     ///////////
     // Other //
     ///////////
@@ -339,6 +348,24 @@ pub mod request {
 
         SetServiceBackends<B: 'static>:
           - backends: &'static [ServiceBackends<B>]
+
+        SetCreationPolicy:
+          - policy: Policy
+
+        SetAuthContext:
+          - context: AuthContextID
+          - pin: PinData
+
+        CheckAuthContext:
+          - context: AuthContextID
+          - pin: PinData
+
+        WriteAuthContext:
+          - new_pin: PinData
+
+        GetAuthRetriesLeft:
+          - context: AuthContextID
+
     }
 }
 
@@ -491,6 +518,18 @@ pub mod reply {
           - id: CertId
 
         SetServiceBackends:
+
+        SetCreationPolicy:
+
+        SetAuthContext:
+
+        CheckAuthContext:
+          - authorized: bool
+
+        WriteAuthContext:
+
+        GetAuthRetriesLeft:
+          - retries_left: u8
 
     }
 }
