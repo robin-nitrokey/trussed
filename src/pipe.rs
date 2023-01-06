@@ -6,59 +6,38 @@ use crate::error::Error;
 use crate::types::ClientContext;
 
 cfg_if::cfg_if! {
-
     if #[cfg(feature = "clients-12")] {
-        interchange::interchange! {
-            TrussedInterchange: (Request, Result<Reply, Error>, 12)
-        }
+        pub const CLIENT_COUNT: usize = 12;
     } else if #[cfg(feature = "clients-11")] {
-        interchange::interchange! {
-            TrussedInterchange: (Request, Result<Reply, Error>, 11)
-        }
+        pub const CLIENT_COUNT: usize = 11;
     } else if #[cfg(feature = "clients-10")] {
-        interchange::interchange! {
-            TrussedInterchange: (Request, Result<Reply, Error>, 10)
-        }
+        pub const CLIENT_COUNT: usize = 10;
     } else if #[cfg(feature = "clients-9")] {
-        interchange::interchange! {
-            TrussedInterchange: (Request, Result<Reply, Error>, 9)
-        }
+        pub const CLIENT_COUNT: usize = 9;
     } else if #[cfg(feature = "clients-8")] {
-        interchange::interchange! {
-            TrussedInterchange: (Request, Result<Reply, Error>, 8)
-        }
+        pub const CLIENT_COUNT: usize = 8;
     } else if #[cfg(feature = "clients-7")] {
-        interchange::interchange! {
-            TrussedInterchange: (Request, Result<Reply, Error>, 7)
-        }
+        pub const CLIENT_COUNT: usize = 7;
     } else if #[cfg(feature = "clients-6")] {
-        interchange::interchange! {
-            TrussedInterchange: (Request, Result<Reply, Error>, 6)
-        }
+        pub const CLIENT_COUNT: usize = 6;
     } else if #[cfg(feature = "clients-5")] {
-        interchange::interchange! {
-            TrussedInterchange: (Request, Result<Reply, Error>, 5)
-        }
+        pub const CLIENT_COUNT: usize = 5;
     } else if #[cfg(feature = "clients-4")] {
-        interchange::interchange! {
-            TrussedInterchange: (Request, Result<Reply, Error>, 4)
-        }
+        pub const CLIENT_COUNT: usize = 4;
     } else if #[cfg(feature = "clients-3")] {
-        interchange::interchange! {
-            TrussedInterchange: (Request, Result<Reply, Error>, 3)
-        }
+        pub const CLIENT_COUNT: usize = 3;
     } else if #[cfg(feature = "clients-2")] {
-        interchange::interchange! {
-            TrussedInterchange: (Request, Result<Reply, Error>, 2)
-        }
+        pub const CLIENT_COUNT: usize = 2;
     } else if #[cfg(feature = "clients-1")] {
-        interchange::interchange! {
-            TrussedInterchange: (Request, Result<Reply, Error>, 1)
-        }
+        pub const CLIENT_COUNT: usize = 1;
+    } else {
+        compile_error!("missing clients feature");
     }
 }
 
-// pub use interchange::TrussedInterchange;
+interchange::interchange! {
+    TrussedInterchange: (Request, Result<Reply, Error>, CLIENT_COUNT)
+}
 
 // TODO: The request pipe should block if there is an unhandled
 // previous request/reply. As a side effect, the service should always
