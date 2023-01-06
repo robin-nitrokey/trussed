@@ -1,5 +1,6 @@
 #![allow(clippy::transmute_ptr_to_ptr)]
-use interchange::Responder;
+
+use interchange::{Interchange, Responder};
 
 use crate::api::{Reply, Request};
 use crate::error::Error;
@@ -47,8 +48,8 @@ interchange::interchange! {
 // https://xenomai.org/documentation/xenomai-2.4/html/api/group__native__queue.html
 // https://doc.micrium.com/display/osiiidoc/Using+Message+Queues
 
-pub struct ServiceEndpoint {
-    pub interchange: Responder<TrussedInterchange>,
+pub struct ServiceEndpoint<I: Interchange + 'static> {
+    pub interchange: Responder<I>,
     // service (trusted) has this, not client (untrusted)
     // used among other things to namespace cryptographic material
     pub client_ctx: ClientContext,
