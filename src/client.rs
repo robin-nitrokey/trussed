@@ -77,11 +77,10 @@
 //!
 use core::marker::PhantomData;
 
-use interchange::Requester;
+use interchange::{Interchange, Requester};
 
 use crate::api::*;
 use crate::error::*;
-use crate::pipe::TrussedInterchange;
 use crate::types::*;
 
 pub use crate::platform::Syscall;
@@ -106,7 +105,10 @@ pub trait Client:
 {
 }
 
-impl<S: Syscall> Client for ClientImplementation<S> {}
+impl<I: Interchange<REQUEST = Request, RESPONSE = Result<Reply>> + 'static, S: Syscall> Client
+    for ClientImplementation<I, S>
+{
+}
 
 /// Lowest level interface, use one of the higher level ones.
 pub trait PollClient {
@@ -152,12 +154,12 @@ where
 }
 
 /// The client implementation client applications actually receive.
-pub struct ClientImplementation<S> {
+pub struct ClientImplementation<I: Interchange + 'static, S> {
     // raw: RawClient<Client<S>>,
     syscall: S,
 
     // RawClient:
-    pub(crate) interchange: Requester<TrussedInterchange>,
+    pub(crate) interchange: Requester<I>,
     // pending: Option<Discriminant<Request>>,
     pending: Option<u8>,
 }
@@ -170,11 +172,12 @@ pub struct ClientImplementation<S> {
 //     }
 // }
 
-impl<S> ClientImplementation<S>
+impl<I, S> ClientImplementation<I, S>
 where
+    I: Interchange + 'static,
     S: Syscall,
 {
-    pub fn new(interchange: Requester<TrussedInterchange>, syscall: S) -> Self {
+    pub fn new(interchange: Requester<I>, syscall: S) -> Self {
         Self {
             interchange,
             pending: None,
@@ -183,8 +186,9 @@ where
     }
 }
 
-impl<S> PollClient for ClientImplementation<S>
+impl<I, S> PollClient for ClientImplementation<I, S>
 where
+    I: Interchange<REQUEST = Request, RESPONSE = Result<Reply>> + 'static,
     S: Syscall,
 {
     fn poll(&mut self) -> core::task::Poll<core::result::Result<Reply, Error>> {
@@ -252,12 +256,35 @@ where
     }
 }
 
-impl<S: Syscall> CertificateClient for ClientImplementation<S> {}
-impl<S: Syscall> CryptoClient for ClientImplementation<S> {}
-impl<S: Syscall> CounterClient for ClientImplementation<S> {}
-impl<S: Syscall> FilesystemClient for ClientImplementation<S> {}
-impl<S: Syscall> ManagementClient for ClientImplementation<S> {}
-impl<S: Syscall> UiClient for ClientImplementation<S> {}
+impl<I: Interchange<REQUEST = Request, RESPONSE = Result<Reply>> + 'static, S: Syscall>
+    CertificateClient for ClientImplementation<I, S>
+{
+}
+
+impl<I: Interchange<REQUEST = Request, RESPONSE = Result<Reply>> + 'static, S: Syscall> CryptoClient
+    for ClientImplementation<I, S>
+{
+}
+
+impl<I: Interchange<REQUEST = Request, RESPONSE = Result<Reply>> + 'static, S: Syscall>
+    CounterClient for ClientImplementation<I, S>
+{
+}
+
+impl<I: Interchange<REQUEST = Request, RESPONSE = Result<Reply>> + 'static, S: Syscall>
+    FilesystemClient for ClientImplementation<I, S>
+{
+}
+
+impl<I: Interchange<REQUEST = Request, RESPONSE = Result<Reply>> + 'static, S: Syscall>
+    ManagementClient for ClientImplementation<I, S>
+{
+}
+
+impl<I: Interchange<REQUEST = Request, RESPONSE = Result<Reply>> + 'static, S: Syscall> UiClient
+    for ClientImplementation<I, S>
+{
+}
 
 /// Read/Write + Delete certificates
 pub trait CertificateClient: PollClient {

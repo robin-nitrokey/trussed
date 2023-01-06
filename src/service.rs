@@ -10,7 +10,6 @@ use crate::error::Error;
 pub use crate::key;
 use crate::mechanisms;
 pub use crate::pipe::ServiceEndpoint;
-use crate::pipe::TrussedInterchange;
 use crate::platform::*;
 pub use crate::store::{
     certstore::{Certstore as _, ClientCertstore},
@@ -73,7 +72,7 @@ pub struct Service<P>
 where
     P: Platform,
 {
-    eps: Vec<ServiceEndpoint, { MAX_SERVICE_CLIENTS::USIZE }>,
+    eps: Vec<ServiceEndpoint<P::I>, { MAX_SERVICE_CLIENTS::USIZE }>,
     resources: ServiceResources<P>,
 }
 
@@ -686,9 +685,9 @@ impl<P: Platform> Service<P> {
         &mut self,
         client_id: &str,
         syscall: S,
-    ) -> Result<crate::client::ClientImplementation<S>, ()> {
+    ) -> Result<crate::client::ClientImplementation<P::I, S>, ()> {
         use interchange::Interchange;
-        let (requester, responder) = TrussedInterchange::claim().ok_or(())?;
+        let (requester, responder) = P::I::claim().ok_or(())?;
         let client_ctx = ClientContext::from(client_id);
         self.add_endpoint(responder, client_ctx)
             .map_err(|_service_endpoint| ())?;
@@ -703,9 +702,9 @@ impl<P: Platform> Service<P> {
     pub fn try_as_new_client(
         &mut self,
         client_id: &str,
-    ) -> Result<crate::client::ClientImplementation<&mut Service<P>>, ()> {
+    ) -> Result<crate::client::ClientImplementation<P::I, &mut Service<P>>, ()> {
         use interchange::Interchange;
-        let (requester, responder) = TrussedInterchange::claim().ok_or(())?;
+        let (requester, responder) = P::I::claim().ok_or(())?;
         let client_ctx = ClientContext::from(client_id);
         self.add_endpoint(responder, client_ctx)
             .map_err(|_service_endpoint| ())?;
@@ -719,9 +718,9 @@ impl<P: Platform> Service<P> {
     pub fn try_into_new_client(
         mut self,
         client_id: &str,
-    ) -> Result<crate::client::ClientImplementation<Service<P>>, ()> {
+    ) -> Result<crate::client::ClientImplementation<P::I, Service<P>>, ()> {
         use interchange::Interchange;
-        let (requester, responder) = TrussedInterchange::claim().ok_or(())?;
+        let (requester, responder) = P::I::claim().ok_or(())?;
         let client_ctx = ClientContext::from(client_id);
         self.add_endpoint(responder, client_ctx)
             .map_err(|_service_endpoint| ())?;
@@ -731,9 +730,9 @@ impl<P: Platform> Service<P> {
 
     pub fn add_endpoint(
         &mut self,
-        interchange: Responder<TrussedInterchange>,
+        interchange: Responder<P::I>,
         client_ctx: impl Into<ClientContext>,
-    ) -> Result<(), ServiceEndpoint> {
+    ) -> Result<(), ServiceEndpoint<P::I>> {
         let client_ctx = client_ctx.into();
         if client_ctx.path == PathBuf::from("trussed") {
             panic!("trussed is a reserved client ID");
