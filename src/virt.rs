@@ -24,7 +24,7 @@ pub use store::{Filesystem, Ram, StoreProvider};
 pub use ui::UserInterface;
 
 interchange::interchange! {
-    TrussedInterchange: (Request, Result<Reply, Error>, CLIENT_COUNT)
+    TrussedInterchange: (Request<()>, Result<Reply, Error>, CLIENT_COUNT)
 }
 
 pub type Client<S> = ClientImplementation<TrussedInterchange, Service<Platform<S>>>;
@@ -96,6 +96,7 @@ impl<S: StoreProvider> Platform<S> {
 }
 
 unsafe impl<S: StoreProvider> platform::Platform for Platform<S> {
+    type B = ();
     type I = TrussedInterchange;
     type R = ChaCha8Rng;
     type S = S::Store;
