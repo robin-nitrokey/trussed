@@ -11,7 +11,7 @@ mod client;
 
 use trussed::types::Location::*;
 
-fn assert_sign_mechanims_reject(key: KeyId, client: &mut impl CryptoClient) {
+fn assert_sign_mechanims_reject<B>(key: KeyId, client: &mut impl CryptoClient<B>) {
     for m in [
         Mechanism::Ed255,
         Mechanism::HmacBlake2s,
@@ -29,7 +29,7 @@ fn assert_sign_mechanims_reject(key: KeyId, client: &mut impl CryptoClient) {
     }
 }
 
-fn assert_encrypt_mechanims_reject(key: KeyId, client: &mut impl CryptoClient) {
+fn assert_encrypt_mechanims_reject<B>(key: KeyId, client: &mut impl CryptoClient<B>) {
     for m in [Mechanism::Aes256Cbc, Mechanism::Chacha8Poly1305] {
         let res_encrypt = try_syscall!(client.encrypt(m, key, b"", b"", None));
         assert!(

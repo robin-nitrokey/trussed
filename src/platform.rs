@@ -12,7 +12,7 @@ use crate::error::Result;
 use interchange::Interchange;
 
 pub use crate::store::Store;
-pub use crate::types::{consent, reboot, ui, ClientContext, ServiceBackend, ServiceBackends};
+pub use crate::types::{consent, reboot, ui, ClientContext, ServiceBackend};
 pub use rand_core::{CryptoRng, RngCore};
 
 pub trait UserInterface {
@@ -58,8 +58,9 @@ pub trait UserInterface {
 // replacing generic parameters with associated types
 // and a macro.
 pub unsafe trait Platform {
+    type B: Clone + PartialEq;
+    type I: Interchange<REQUEST = Request<Self::B>, RESPONSE = Result<Reply>> + 'static;
     // temporarily remove CryptoRng bound until HALs come along
-    type I: Interchange<REQUEST = Request, RESPONSE = Result<Reply>> + 'static;
     type R: CryptoRng + RngCore;
     type S: Store;
     type UI: UserInterface;
@@ -67,7 +68,7 @@ pub unsafe trait Platform {
     fn rng(&mut self) -> &mut Self::R;
     fn store(&self) -> Self::S;
     fn user_interface(&mut self) -> &mut Self::UI;
-    fn backend(&mut self, _backend_id: ServiceBackends) -> Option<&mut dyn ServiceBackend> {
+    fn backend(&mut self, _backend: Self::B) -> Option<&mut dyn ServiceBackend<Self::B>> {
         None
     }
 }
@@ -99,6 +100,7 @@ macro_rules! platform { (
     }
 
     unsafe impl $crate::platform::Platform for $PlatformName {
+        type B = ();
         type I = $Interchange;
         type R = $Rng;
         type S = $Store;
@@ -116,8 +118,8 @@ macro_rules! platform { (
             self.store
         }
 
-        fn backend(&mut self, backend_id: $crate::types::ServiceBackends) -> Option<&mut dyn $crate::types::ServiceBackend> {
-            match backend_id {
+        fn backend(&mut self, backend: Self::B) -> Option<&mut dyn $crate::types::ServiceBackend<Self::B>> {
+            match backend{
                 $($BackendID => Some(&mut self.$BackendName), );*
                 _ => None,
             }

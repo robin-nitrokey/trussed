@@ -13,7 +13,7 @@ use littlefs2::fs::{Allocation, Filesystem};
 use crate::client::{CryptoClient as _, FilesystemClient as _};
 
 interchange::interchange! {
-    TrussedInterchange: (Request, Result<Reply, Error>, CLIENT_COUNT)
+    TrussedInterchange: (Request<()>, Result<Reply, Error>, CLIENT_COUNT)
 }
 
 pub struct MockRng(ChaCha20);
