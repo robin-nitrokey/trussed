@@ -1,6 +1,7 @@
 #![cfg(test)]
 use chacha20::ChaCha20;
 
+use crate::pipe::TrussedInterchange;
 use crate::types::*;
 use crate::*;
 use entropy::shannon_entropy;
@@ -193,7 +194,7 @@ macro_rules! setup {
         trussed.set_seed_if_uninitialized(&$seed);
         let mut $client = {
             pub type TestClient<'a> =
-                crate::ClientImplementation<&'a mut crate::Service<$platform>>;
+                crate::ClientImplementation<TrussedInterchange, &'a mut crate::Service<$platform>>;
             TestClient::new(test_trussed_requester, &mut trussed)
         };
     };
