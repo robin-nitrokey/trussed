@@ -106,19 +106,21 @@ pub trait Client:
 {
 }
 
-impl<I: TrussedInterchange, S: Syscall> Client for ClientImplementation<I, S> {}
+impl<B, I: TrussedInterchange<B>, S: Syscall> Client for ClientImplementation<B, I, S> {}
 
 /// Lowest level interface, use one of the higher level ones.
 pub trait PollClient {
+    type Backend;
+
     fn request<T: From<crate::api::Reply>>(
         &mut self,
-        req: impl Into<Request>,
+        req: impl Into<Request<Self::Backend>>,
     ) -> ClientResult<'_, T, Self>;
     fn poll(&mut self) -> core::task::Poll<core::result::Result<Reply, Error>>;
     fn syscall(&mut self);
     fn set_service_backends(
         &mut self,
-        backends: Vec<ServiceBackends, 2>,
+        backends: Vec<ServiceBackends<Self::Backend>, 2>,
     ) -> ClientResult<'_, reply::SetServiceBackends, Self>;
 }
 
@@ -152,7 +154,7 @@ where
 }
 
 /// The client implementation client applications actually receive.
-pub struct ClientImplementation<I: Interchange + 'static, S> {
+pub struct ClientImplementation<B, I: Interchange + 'static, S> {
     // raw: RawClient<Client<S>>,
     syscall: S,
 
@@ -160,6 +162,7 @@ pub struct ClientImplementation<I: Interchange + 'static, S> {
     pub(crate) interchange: Requester<I>,
     // pending: Option<Discriminant<Request>>,
     pending: Option<u8>,
+    _marker: PhantomData<B>,
 }
 
 // impl<S> From<(RawClient, S)> for Client<S>
@@ -170,7 +173,7 @@ pub struct ClientImplementation<I: Interchange + 'static, S> {
 //     }
 // }
 
-impl<I, S> ClientImplementation<I, S>
+impl<B, I, S> ClientImplementation<B, I, S>
 where
     I: Interchange + 'static,
     S: Syscall,
@@ -180,15 +183,18 @@ where
             interchange,
             pending: None,
             syscall,
+            _marker: Default::default(),
         }
     }
 }
 
-impl<I, S> PollClient for ClientImplementation<I, S>
+impl<B, I, S> PollClient for ClientImplementation<B, I, S>
 where
-    I: TrussedInterchange,
+    I: TrussedInterchange<B>,
     S: Syscall,
 {
+    type Backend = B;
+
     fn poll(&mut self) -> core::task::Poll<core::result::Result<Reply, Error>> {
         match self.interchange.take_response() {
             Some(reply) => {
@@ -222,7 +228,7 @@ where
     // call with any of `crate::api::request::*`
     fn request<T: From<crate::api::Reply>>(
         &mut self,
-        req: impl Into<Request>,
+        req: impl Into<Request<B>>,
     ) -> ClientResult<'_, T, Self> {
         // TODO: handle failure
         // TODO: fail on pending (non-canceled) request)
@@ -246,7 +252,7 @@ where
 
     fn set_service_backends(
         &mut self,
-        backends: Vec<ServiceBackends, 2>,
+        backends: Vec<ServiceBackends<B>, 2>,
     ) -> ClientResult<'_, reply::SetServiceBackends, Self> {
         let r = self.request(request::SetServiceBackends { backends })?;
         r.client.syscall();
@@ -254,17 +260,17 @@ where
     }
 }
 
-impl<I: TrussedInterchange, S: Syscall> CertificateClient for ClientImplementation<I, S> {}
+impl<B, I: TrussedInterchange<B>, S: Syscall> CertificateClient for ClientImplementation<B, I, S> {}
 
-impl<I: TrussedInterchange, S: Syscall> CryptoClient for ClientImplementation<I, S> {}
+impl<B, I: TrussedInterchange<B>, S: Syscall> CryptoClient for ClientImplementation<B, I, S> {}
 
-impl<I: TrussedInterchange, S: Syscall> CounterClient for ClientImplementation<I, S> {}
+impl<B, I: TrussedInterchange<B>, S: Syscall> CounterClient for ClientImplementation<B, I, S> {}
 
-impl<I: TrussedInterchange, S: Syscall> FilesystemClient for ClientImplementation<I, S> {}
+impl<B, I: TrussedInterchange<B>, S: Syscall> FilesystemClient for ClientImplementation<B, I, S> {}
 
-impl<I: TrussedInterchange, S: Syscall> ManagementClient for ClientImplementation<I, S> {}
+impl<B, I: TrussedInterchange<B>, S: Syscall> ManagementClient for ClientImplementation<B, I, S> {}
 
-impl<I: TrussedInterchange, S: Syscall> UiClient for ClientImplementation<I, S> {}
+impl<B, I: TrussedInterchange<B>, S: Syscall> UiClient for ClientImplementation<B, I, S> {}
 
 /// Read/Write + Delete certificates
 pub trait CertificateClient: PollClient {

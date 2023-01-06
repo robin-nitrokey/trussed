@@ -1,12 +1,12 @@
 macro_rules! generate_enums {
-    ($($which:ident: $index:literal)*) => {
+    ($($which:ident$(<$param:ident>)?: $index:literal)*) => {
 
     #[derive(Clone, Eq, PartialEq, Debug)]
     #[allow(clippy::large_enum_variant)]
-    pub enum Request {
+    pub enum Request<B> {
         DummyRequest, // for testing
         $(
-        $which(request::$which),
+        $which(request::$which$(<$param>)?),
         )*
     }
 
@@ -19,8 +19,8 @@ macro_rules! generate_enums {
         )*
     }
 
-    impl From<&Request> for u8 {
-        fn from(request: &Request) -> u8 {
+    impl<B> From<&Request<B>> for u8 {
+        fn from(request: &Request<B>) -> u8 {
             match request {
                 Request::DummyRequest => 0,
                 $(
@@ -45,19 +45,19 @@ macro_rules! generate_enums {
 
 macro_rules! impl_request {
     ($(
-        $request:ident:
+        $request:ident$(<$param:ident>)?:
             $(- $name:tt: $type:path)*
     )*)
         => {$(
     #[derive(Clone, Eq, PartialEq, Debug, serde_indexed::DeserializeIndexed, serde_indexed::SerializeIndexed)]
-    pub struct $request {
+    pub struct $request$(<$param>)? {
         $(
             pub $name: $type,
         )*
     }
 
-    impl From<$request> for Request {
-        fn from(request: $request) -> Self {
+    impl<B> From<$request$(<$param>)?> for Request<B> {
+        fn from(request: $request$(<$param>)?) -> Self {
             Self::$request(request)
         }
     }

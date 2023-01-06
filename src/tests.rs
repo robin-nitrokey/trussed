@@ -13,7 +13,7 @@ use littlefs2::fs::{Allocation, Filesystem};
 use crate::client::{CryptoClient as _, FilesystemClient as _};
 
 interchange::interchange! {
-    TrussedInterchange: (Request, Result<Reply, Error>, CLIENT_COUNT)
+    TrussedInterchange: (Request<()>, Result<Reply, Error>, CLIENT_COUNT)
 }
 
 pub struct MockRng(ChaCha20);
@@ -202,8 +202,11 @@ macro_rules! setup {
 
         trussed.set_seed_if_uninitialized(&$seed);
         let mut $client = {
-            pub type TestClient<'a> =
-                crate::ClientImplementation<TrussedInterchange, &'a mut crate::Service<$platform>>;
+            pub type TestClient<'a> = crate::ClientImplementation<
+                (),
+                TrussedInterchange,
+                &'a mut crate::Service<$platform>,
+            >;
             TestClient::new(test_trussed_requester, &mut trussed)
         };
     };

@@ -1,7 +1,7 @@
 use super::*;
 
 #[cfg(feature = "aes256-cbc")]
-impl<I: TrussedInterchange, S: Syscall> Aes256Cbc for ClientImplementation<I, S> {}
+impl<B, I: TrussedInterchange<B>, S: Syscall> Aes256Cbc for ClientImplementation<B, I, S> {}
 
 pub trait Aes256Cbc: CryptoClient {
     fn decrypt_aes256cbc<'c>(
@@ -22,7 +22,7 @@ pub trait Aes256Cbc: CryptoClient {
 }
 
 #[cfg(feature = "chacha8-poly1305")]
-impl<I: TrussedInterchange, S: Syscall> Chacha8Poly1305 for ClientImplementation<I, S> {}
+impl<B, I: TrussedInterchange<B>, S: Syscall> Chacha8Poly1305 for ClientImplementation<B, I, S> {}
 
 pub trait Chacha8Poly1305: CryptoClient {
     fn decrypt_chacha8poly1305<'c>(
@@ -101,7 +101,7 @@ pub trait Chacha8Poly1305: CryptoClient {
 }
 
 #[cfg(feature = "hmac-blake2s")]
-impl<I: TrussedInterchange, S: Syscall> HmacBlake2s for ClientImplementation<I, S> {}
+impl<B, I: TrussedInterchange<B>, S: Syscall> HmacBlake2s for ClientImplementation<B, I, S> {}
 
 pub trait HmacBlake2s: CryptoClient {
     fn hmacblake2s_derive_key(
@@ -133,7 +133,7 @@ pub trait HmacBlake2s: CryptoClient {
 }
 
 #[cfg(feature = "hmac-sha1")]
-impl<I: TrussedInterchange, S: Syscall> HmacSha1 for ClientImplementation<I, S> {}
+impl<B, I: TrussedInterchange<B>, S: Syscall> HmacSha1 for ClientImplementation<B, I, S> {}
 
 pub trait HmacSha1: CryptoClient {
     fn hmacsha1_derive_key(
@@ -165,7 +165,7 @@ pub trait HmacSha1: CryptoClient {
 }
 
 #[cfg(feature = "hmac-sha256")]
-impl<I: TrussedInterchange, S: Syscall> HmacSha256 for ClientImplementation<I, S> {}
+impl<B, I: TrussedInterchange<B>, S: Syscall> HmacSha256 for ClientImplementation<B, I, S> {}
 
 pub trait HmacSha256: CryptoClient {
     fn hmacsha256_derive_key(
@@ -197,7 +197,7 @@ pub trait HmacSha256: CryptoClient {
 }
 
 #[cfg(feature = "hmac-sha512")]
-impl<I: TrussedInterchange, S: Syscall> HmacSha512 for ClientImplementation<I, S> {}
+impl<B, I: TrussedInterchange<B>, S: Syscall> HmacSha512 for ClientImplementation<B, I, S> {}
 
 pub trait HmacSha512: CryptoClient {
     fn hmacsha512_derive_key(
@@ -229,7 +229,7 @@ pub trait HmacSha512: CryptoClient {
 }
 
 #[cfg(feature = "ed255")]
-impl<I: TrussedInterchange, S: Syscall> Ed255 for ClientImplementation<I, S> {}
+impl<B, I: TrussedInterchange<B>, S: Syscall> Ed255 for ClientImplementation<B, I, S> {}
 
 pub trait Ed255: CryptoClient {
     fn generate_ed255_private_key(
@@ -297,7 +297,7 @@ pub trait Ed255: CryptoClient {
 }
 
 #[cfg(feature = "p256")]
-impl<I: TrussedInterchange, S: Syscall> P256 for ClientImplementation<I, S> {}
+impl<B, I: TrussedInterchange<B>, S: Syscall> P256 for ClientImplementation<B, I, S> {}
 
 pub trait P256: CryptoClient {
     fn generate_p256_private_key(
@@ -386,7 +386,7 @@ pub trait P256: CryptoClient {
 }
 
 #[cfg(feature = "sha256")]
-impl<I: TrussedInterchange, S: Syscall> Sha256 for ClientImplementation<I, S> {}
+impl<B, I: TrussedInterchange<B>, S: Syscall> Sha256 for ClientImplementation<B, I, S> {}
 
 pub trait Sha256: CryptoClient {
     fn sha256_derive_key(
@@ -411,7 +411,7 @@ pub trait Sha256: CryptoClient {
 }
 
 #[cfg(feature = "tdes")]
-impl<I: TrussedInterchange, S: Syscall> Tdes for ClientImplementation<I, S> {}
+impl<B, I: TrussedInterchange<B>, S: Syscall> Tdes for ClientImplementation<B, I, S> {}
 
 pub trait Tdes: CryptoClient {
     fn decrypt_tdes<'c>(
@@ -432,7 +432,7 @@ pub trait Tdes: CryptoClient {
 }
 
 #[cfg(feature = "totp")]
-impl<I: TrussedInterchange, S: Syscall> Totp for ClientImplementation<I, S> {}
+impl<B, I: TrussedInterchange<B>, S: Syscall> Totp for ClientImplementation<B, I, S> {}
 
 pub trait Totp: CryptoClient {
     fn sign_totp(&mut self, key: KeyId, timestamp: u64) -> ClientResult<'_, reply::Sign, Self> {
@@ -446,7 +446,7 @@ pub trait Totp: CryptoClient {
 }
 
 #[cfg(feature = "x255")]
-impl<I: TrussedInterchange, S: Syscall> X255 for ClientImplementation<I, S> {}
+impl<B, I: TrussedInterchange<B>, S: Syscall> X255 for ClientImplementation<B, I, S> {}
 
 pub trait X255: CryptoClient {
     fn generate_x255_secret_key(
