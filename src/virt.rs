@@ -24,10 +24,10 @@ pub use store::{Filesystem, Ram, StoreProvider};
 pub use ui::UserInterface;
 
 interchange::interchange! {
-    TrussedInterchange: (Request, Result<Reply, Error>, CLIENT_COUNT)
+    TrussedInterchange: (Request<()>, Result<Reply, Error>, CLIENT_COUNT)
 }
 
-pub type Client<S> = ClientImplementation<TrussedInterchange, Service<Platform<S>>>;
+pub type Client<S> = ClientImplementation<(), TrussedInterchange, Service<Platform<S>>>;
 
 // We need this mutex to make sure that:
 // - TrussedInterchange is not used concurrently
@@ -87,7 +87,7 @@ impl<S: StoreProvider> Platform<S> {
     pub fn run_client<R>(
         self,
         client_id: &str,
-        test: impl FnOnce(ClientImplementation<TrussedInterchange, Service<Self>>) -> R,
+        test: impl FnOnce(ClientImplementation<(), TrussedInterchange, Service<Self>>) -> R,
     ) -> R {
         let service = Service::new(self);
         let client = service.try_into_new_client(client_id).unwrap();
@@ -96,6 +96,7 @@ impl<S: StoreProvider> Platform<S> {
 }
 
 unsafe impl<S: StoreProvider> platform::Platform for Platform<S> {
+    type B = ();
     type I = TrussedInterchange;
     type R = ChaCha8Rng;
     type S = S::Store;

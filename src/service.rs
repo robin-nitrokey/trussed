@@ -72,7 +72,7 @@ pub struct Service<P>
 where
     P: Platform,
 {
-    eps: Vec<ServiceEndpoint<P::I>, { MAX_SERVICE_CLIENTS::USIZE }>,
+    eps: Vec<ServiceEndpoint<P::B, P::I>, { MAX_SERVICE_CLIENTS::USIZE }>,
     resources: ServiceResources<P>,
 }
 
@@ -83,8 +83,8 @@ impl<P: Platform> ServiceResources<P> {
     #[inline(never)]
     pub fn reply_to(
         &mut self,
-        client_ctx: &mut ClientContext,
-        request: &Request,
+        client_ctx: &mut ClientContext<P::B>,
+        request: &Request<P::B>,
     ) -> Result<Reply, Error> {
         // TODO: what we want to do here is map an enum to a generic type
         // Is there a nicer way to do this?
@@ -703,7 +703,7 @@ impl<P: Platform> Service<P> {
         &mut self,
         client_id: &str,
         syscall: S,
-    ) -> Result<crate::client::ClientImplementation<P::I, S>, ()> {
+    ) -> Result<crate::client::ClientImplementation<P::B, P::I, S>, ()> {
         use interchange::Interchange;
         let (requester, responder) = P::I::claim().ok_or(())?;
         let client_ctx = ClientContext::from(client_id);
@@ -720,7 +720,7 @@ impl<P: Platform> Service<P> {
     pub fn try_as_new_client(
         &mut self,
         client_id: &str,
-    ) -> Result<crate::client::ClientImplementation<P::I, &mut Service<P>>, ()> {
+    ) -> Result<crate::client::ClientImplementation<P::B, P::I, &mut Service<P>>, ()> {
         use interchange::Interchange;
         let (requester, responder) = P::I::claim().ok_or(())?;
         let client_ctx = ClientContext::from(client_id);
@@ -736,7 +736,7 @@ impl<P: Platform> Service<P> {
     pub fn try_into_new_client(
         mut self,
         client_id: &str,
-    ) -> Result<crate::client::ClientImplementation<P::I, Service<P>>, ()> {
+    ) -> Result<crate::client::ClientImplementation<P::B, P::I, Service<P>>, ()> {
         use interchange::Interchange;
         let (requester, responder) = P::I::claim().ok_or(())?;
         let client_ctx = ClientContext::from(client_id);
@@ -749,8 +749,8 @@ impl<P: Platform> Service<P> {
     pub fn add_endpoint(
         &mut self,
         interchange: Responder<P::I>,
-        client_ctx: impl Into<ClientContext>,
-    ) -> Result<(), ServiceEndpoint<P::I>> {
+        client_ctx: impl Into<ClientContext<P::B>>,
+    ) -> Result<(), ServiceEndpoint<P::B, P::I>> {
         let client_ctx = client_ctx.into();
         if client_ctx.path == PathBuf::from("trussed") {
             panic!("trussed is a reserved client ID");
@@ -804,10 +804,15 @@ impl<P: Platform> Service<P> {
 
                 let mut reply_result = Err(Error::RequestNotAvailable);
                 for backend in ep.client_ctx.backends.clone() {
-                    if backend == ServiceBackends::Software {
-                        reply_result = resources.reply_to(&mut ep.client_ctx, &request)
-                    } else if let Some(backend) = resources.platform.backend(backend) {
-                        reply_result = backend.reply_to(&mut ep.client_ctx, &request);
+                    match backend {
+                        ServiceBackends::Software => {
+                            reply_result = resources.reply_to(&mut ep.client_ctx, &request)
+                        }
+                        ServiceBackends::Custom(backend) => {
+                            if let Some(backend) = resources.platform.backend(backend) {
+                                reply_result = backend.reply_to(&mut ep.client_ctx, &request);
+                            }
+                        }
                     }
 
                     if reply_result != Err(Error::RequestNotAvailable) {

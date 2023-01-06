@@ -1,3 +1,4 @@
+use core::fmt::Debug;
 use core::marker::PhantomData;
 use core::ops::Deref;
 
@@ -235,31 +236,33 @@ currently has. Trussed currently uses it to choose the client-specific
 subtree in the filesystem (see docs in src/store.rs) and to maintain
 the walker state of the directory traversal syscalls.
 */
-pub struct ClientContext {
+pub struct ClientContext<B> {
     pub path: PathBuf,
-    pub backends: Vec<ServiceBackends, 2>,
+    pub backends: Vec<ServiceBackends<B>, 2>,
     pub(crate) read_dir_state: Option<ReadDirState>,
     pub(crate) read_dir_files_state: Option<ReadDirFilesState>,
 }
 
-impl core::convert::From<PathBuf> for ClientContext {
+impl<B> core::convert::From<PathBuf> for ClientContext<B> {
     fn from(path: PathBuf) -> Self {
         Self::from_pathbuf(path)
     }
 }
 
-impl core::convert::From<&str> for ClientContext {
+impl<B> core::convert::From<&str> for ClientContext<B> {
     fn from(path_str: &str) -> Self {
         Self::from_pathbuf(PathBuf::from(path_str))
     }
 }
 
-impl ClientContext {
+impl<B> ClientContext<B> {
     pub fn from_pathbuf(path: PathBuf) -> Self {
-        Self::new(path, Vec::from_slice(&[ServiceBackends::Software]).unwrap())
+        let mut backends = Vec::new();
+        backends.push(ServiceBackends::Software).ok().unwrap();
+        Self::new(path, backends)
     }
 
-    pub fn new(path: PathBuf, backends: Vec<ServiceBackends, 2>) -> Self {
+    pub fn new(path: PathBuf, backends: Vec<ServiceBackends<B>, 2>) -> Self {
         Self {
             path,
             backends,
@@ -267,18 +270,20 @@ impl ClientContext {
             read_dir_files_state: None,
         }
     }
+}
 
-    pub fn builder(path: PathBuf) -> ClientContextBuilder {
+impl<B: Clone + Debug> ClientContext<B> {
+    pub fn builder(path: PathBuf) -> ClientContextBuilder<B> {
         ClientContextBuilder::new(path)
     }
 }
 
-pub struct ClientContextBuilder {
+pub struct ClientContextBuilder<B> {
     pub path: PathBuf,
-    pub backends: Vec<ServiceBackends, 2>,
+    pub backends: Vec<ServiceBackends<B>, 2>,
 }
 
-impl ClientContextBuilder {
+impl<B: Clone + Debug> ClientContextBuilder<B> {
     pub fn new(path: PathBuf) -> Self {
         Self {
             path,
@@ -286,12 +291,12 @@ impl ClientContextBuilder {
         }
     }
 
-    pub fn add_backend(&mut self, backend: ServiceBackends) -> &ClientContextBuilder {
+    pub fn add_backend(&mut self, backend: ServiceBackends<B>) -> &ClientContextBuilder<B> {
         self.backends.insert(0, backend).unwrap();
         self
     }
 
-    pub fn build(&self) -> ClientContext {
+    pub fn build(&self) -> ClientContext<B> {
         ClientContext::new(self.path.clone(), self.backends.clone())
     }
 }
@@ -312,20 +317,19 @@ Backends are called from Service::process() under consideration of the
 selection and ordering the calling client has specified in its ClientId.
 */
 #[derive(Copy, Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
-pub enum ServiceBackends {
+pub enum ServiceBackends<B> {
     Software,
-    SoftwareAuth,
-    // SE050(Se050Parameters),
+    Custom(B),
 }
 
 /**
 Each service backend implements a subset of API calls through this trait.
 */
-pub trait ServiceBackend {
+pub trait ServiceBackend<B> {
     fn reply_to(
         &mut self,
-        client_id: &mut ClientContext,
-        request: &Request,
+        client_id: &mut ClientContext<B>,
+        request: &Request<B>,
     ) -> Result<Reply, Error>;
 }
 
