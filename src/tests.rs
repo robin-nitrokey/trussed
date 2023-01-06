@@ -1,7 +1,8 @@
 #![cfg(test)]
 use chacha20::ChaCha20;
 
-use crate::pipe::TrussedInterchange;
+use crate::api::{Reply, Request};
+use crate::pipe::CLIENT_COUNT;
 use crate::types::*;
 use crate::*;
 use entropy::shannon_entropy;
@@ -10,6 +11,10 @@ use littlefs2::const_ram_storage;
 use littlefs2::fs::{Allocation, Filesystem};
 
 use crate::client::{CryptoClient as _, FilesystemClient as _};
+
+interchange::interchange! {
+    TrussedInterchange: (Request, Result<Reply, Error>, CLIENT_COUNT)
+}
 
 pub struct MockRng(ChaCha20);
 
@@ -162,7 +167,13 @@ macro_rules! setup {
             External: ExternalStorage,
             Volatile: VolatileStorage
         );
-        platform!($platform, R: MockRng, S: $store, UI: UserInterface,);
+        platform!(
+            $platform,
+            I: TrussedInterchange,
+            R: MockRng,
+            S: $store,
+            UI: UserInterface,
+        );
 
         let store = $store::claim().unwrap();
 
@@ -179,11 +190,10 @@ macro_rules! setup {
         let mut trussed: crate::Service<$platform> = crate::service::Service::new(platform);
 
         unsafe {
-            crate::pipe::TrussedInterchange::reset_claims();
+            TrussedInterchange::reset_claims();
         }
         let (test_trussed_requester, test_trussed_responder) =
-            crate::pipe::TrussedInterchange::claim()
-                .expect("could not setup TEST TrussedInterchange");
+            TrussedInterchange::claim().expect("could not setup TEST TrussedInterchange");
         let test_client_id = "TEST";
 
         assert!(trussed
