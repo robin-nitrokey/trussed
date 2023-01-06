@@ -12,11 +12,20 @@ use rand_chacha::ChaCha8Rng;
 use rand_core::SeedableRng as _;
 
 use crate::{
-    pipe::TrussedInterchange, platform, service::Service, ClientImplementation, Interchange as _,
+    api::{Reply, Request},
+    error::Error,
+    pipe::CLIENT_COUNT,
+    platform,
+    service::Service,
+    ClientImplementation, Interchange as _,
 };
 
 pub use store::{Filesystem, Ram, StoreProvider};
 pub use ui::UserInterface;
+
+interchange::interchange! {
+    TrussedInterchange: (Request, Result<Reply, Error>, CLIENT_COUNT)
+}
 
 pub type Client<S> = ClientImplementation<TrussedInterchange, Service<Platform<S>>>;
 

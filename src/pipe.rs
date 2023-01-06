@@ -2,8 +2,6 @@
 
 use interchange::{Interchange, Responder};
 
-use crate::api::{Reply, Request};
-use crate::error::Error;
 use crate::types::ClientContext;
 
 cfg_if::cfg_if! {
@@ -34,10 +32,6 @@ cfg_if::cfg_if! {
     } else {
         compile_error!("missing clients feature");
     }
-}
-
-interchange::interchange! {
-    TrussedInterchange: (Request, Result<Reply, Error>, CLIENT_COUNT)
 }
 
 // TODO: The request pipe should block if there is an unhandled

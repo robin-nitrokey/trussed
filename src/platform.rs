@@ -75,6 +75,7 @@ pub unsafe trait Platform {
 #[macro_export]
 macro_rules! platform { (
     $PlatformName:ident,
+    I: $Interchange:ty,
     R: $Rng:ty,
     S: $Store:ty,
     UI: $UserInterface:ty,
@@ -98,7 +99,7 @@ macro_rules! platform { (
     }
 
     unsafe impl $crate::platform::Platform for $PlatformName {
-        type I = $crate::pipe::TrussedInterchange;
+        type I = $Interchange;
         type R = $Rng;
         type S = $Store;
         type UI = $UserInterface;
