@@ -805,16 +805,12 @@ impl<P: Platform> Service<P> {
 
                 let mut reply_result = Err(Error::RequestNotAvailable);
                 for backend in ep.client_ctx.backends.clone() {
-                    reply_result = match backend {
-                        ServiceBackends::Software => {
-                            resources.reply_to(&mut ep.client_ctx, &request)
-                        }
-                        sb => {
-                            resources
-                                .platform
-                                .platform_reply_to(sb, &mut ep.client_ctx, &request)
-                        }
-                    };
+                    if backend == ServiceBackends::Software {
+                        reply_result = resources.reply_to(&mut ep.client_ctx, &request)
+                    } else if let Some(backend) = resources.platform.backend(backend) {
+                        reply_result = backend.reply_to(&mut ep.client_ctx, &request);
+                    }
+
                     if reply_result != Err(Error::RequestNotAvailable) {
                         break;
                     }

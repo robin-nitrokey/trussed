@@ -7,10 +7,8 @@
 //! TODO: Currently, `Platform::R` lacks the `CryptoRng` bound.
 
 // pub use rand_core::{CryptoRng, RngCore};
-use crate::api::{Reply, Request};
-use crate::error::Error;
 pub use crate::store::Store;
-pub use crate::types::{consent, reboot, ui, ClientContext, ServiceBackends};
+pub use crate::types::{consent, reboot, ui, ClientContext, ServiceBackend, ServiceBackends};
 pub use rand_core::{CryptoRng, RngCore};
 
 pub trait UserInterface {
@@ -64,12 +62,9 @@ pub unsafe trait Platform {
     fn rng(&mut self) -> &mut Self::R;
     fn store(&self) -> Self::S;
     fn user_interface(&mut self) -> &mut Self::UI;
-    fn platform_reply_to(
-        &mut self,
-        backend_id: ServiceBackends,
-        client_id: &mut ClientContext,
-        request: &Request,
-    ) -> Result<Reply, Error>;
+    fn backend(&mut self, _backend_id: ServiceBackends) -> Option<&mut dyn ServiceBackend> {
+        None
+    }
 }
 
 #[macro_export]
@@ -114,13 +109,11 @@ macro_rules! platform { (
             self.store
         }
 
-        #[allow(unused)]
-        fn platform_reply_to(&mut self, backend_id: $crate::types::ServiceBackends, client_id: &mut $crate::types::ClientContext, request: &$crate::api::Request) -> Result<$crate::api::Reply, $crate::error::Error> {
-            $(if let $BackendID = backend_id {
-                let b: &mut dyn $crate::types::ServiceBackend = &mut self.$BackendName;
-                return b.reply_to(client_id, request);
-            } );*
-            return Err($crate::error::Error::RequestNotAvailable);
+        fn backend(&mut self, backend_id: $crate::types::ServiceBackends) -> Option<&mut dyn $crate::types::ServiceBackend> {
+            match backend_id {
+                $($BackendID => Some(&mut self.$BackendName), );*
+                _ => None,
+            }
         }
     }
 }}
