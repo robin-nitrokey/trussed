@@ -243,25 +243,21 @@ pub struct ClientContext<B> {
     pub(crate) read_dir_files_state: Option<ReadDirFilesState>,
 }
 
-impl<B> core::convert::From<PathBuf> for ClientContext<B> {
+impl<B> From<PathBuf> for ClientContext<B> {
     fn from(path: PathBuf) -> Self {
-        Self::from_pathbuf(path)
-    }
-}
-
-impl<B> core::convert::From<&str> for ClientContext<B> {
-    fn from(path_str: &str) -> Self {
-        Self::from_pathbuf(PathBuf::from(path_str))
-    }
-}
-
-impl<B> ClientContext<B> {
-    pub fn from_pathbuf(path: PathBuf) -> Self {
         let mut backends = Vec::new();
         backends.push(ServiceBackends::Software).ok().unwrap();
         Self::new(path, backends)
     }
+}
 
+impl<B> From<&str> for ClientContext<B> {
+    fn from(path_str: &str) -> Self {
+        PathBuf::from(path_str).into()
+    }
+}
+
+impl<B> ClientContext<B> {
     pub fn new(path: PathBuf, backends: Vec<ServiceBackends<B>, 2>) -> Self {
         Self {
             path,
