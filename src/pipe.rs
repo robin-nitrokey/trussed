@@ -2,7 +2,21 @@
 
 use interchange::{Interchange, Responder};
 
-use crate::types::ClientContext;
+use crate::{
+    api::{Reply, Request},
+    error::Result,
+    types::ClientContext,
+};
+
+pub trait TrussedInterchange:
+    Interchange<REQUEST = Request, RESPONSE = Result<Reply>> + 'static
+{
+}
+
+impl<I: Interchange<REQUEST = Request, RESPONSE = Result<Reply>> + 'static> TrussedInterchange
+    for I
+{
+}
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "clients-12")] {
