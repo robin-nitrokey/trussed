@@ -81,6 +81,7 @@ use interchange::{Interchange, Requester};
 
 use crate::api::*;
 use crate::error::*;
+use crate::pipe::TrussedInterchange;
 use crate::types::*;
 
 pub use crate::platform::Syscall;
@@ -105,10 +106,7 @@ pub trait Client:
 {
 }
 
-impl<I: Interchange<REQUEST = Request, RESPONSE = Result<Reply>> + 'static, S: Syscall> Client
-    for ClientImplementation<I, S>
-{
-}
+impl<I: TrussedInterchange, S: Syscall> Client for ClientImplementation<I, S> {}
 
 /// Lowest level interface, use one of the higher level ones.
 pub trait PollClient {
@@ -188,7 +186,7 @@ where
 
 impl<I, S> PollClient for ClientImplementation<I, S>
 where
-    I: Interchange<REQUEST = Request, RESPONSE = Result<Reply>> + 'static,
+    I: TrussedInterchange,
     S: Syscall,
 {
     fn poll(&mut self) -> core::task::Poll<core::result::Result<Reply, Error>> {
@@ -256,35 +254,17 @@ where
     }
 }
 
-impl<I: Interchange<REQUEST = Request, RESPONSE = Result<Reply>> + 'static, S: Syscall>
-    CertificateClient for ClientImplementation<I, S>
-{
-}
+impl<I: TrussedInterchange, S: Syscall> CertificateClient for ClientImplementation<I, S> {}
 
-impl<I: Interchange<REQUEST = Request, RESPONSE = Result<Reply>> + 'static, S: Syscall> CryptoClient
-    for ClientImplementation<I, S>
-{
-}
+impl<I: TrussedInterchange, S: Syscall> CryptoClient for ClientImplementation<I, S> {}
 
-impl<I: Interchange<REQUEST = Request, RESPONSE = Result<Reply>> + 'static, S: Syscall>
-    CounterClient for ClientImplementation<I, S>
-{
-}
+impl<I: TrussedInterchange, S: Syscall> CounterClient for ClientImplementation<I, S> {}
 
-impl<I: Interchange<REQUEST = Request, RESPONSE = Result<Reply>> + 'static, S: Syscall>
-    FilesystemClient for ClientImplementation<I, S>
-{
-}
+impl<I: TrussedInterchange, S: Syscall> FilesystemClient for ClientImplementation<I, S> {}
 
-impl<I: Interchange<REQUEST = Request, RESPONSE = Result<Reply>> + 'static, S: Syscall>
-    ManagementClient for ClientImplementation<I, S>
-{
-}
+impl<I: TrussedInterchange, S: Syscall> ManagementClient for ClientImplementation<I, S> {}
 
-impl<I: Interchange<REQUEST = Request, RESPONSE = Result<Reply>> + 'static, S: Syscall> UiClient
-    for ClientImplementation<I, S>
-{
-}
+impl<I: TrussedInterchange, S: Syscall> UiClient for ClientImplementation<I, S> {}
 
 /// Read/Write + Delete certificates
 pub trait CertificateClient: PollClient {
