@@ -272,35 +272,6 @@ impl<B> ClientContext<B> {
     }
 }
 
-impl<B: Clone + Debug> ClientContext<B> {
-    pub fn builder(path: PathBuf) -> ClientContextBuilder<B> {
-        ClientContextBuilder::new(path)
-    }
-}
-
-pub struct ClientContextBuilder<B> {
-    pub path: PathBuf,
-    pub backends: Vec<ServiceBackends<B>, 2>,
-}
-
-impl<B: Clone + Debug> ClientContextBuilder<B> {
-    pub fn new(path: PathBuf) -> Self {
-        Self {
-            path,
-            backends: Vec::from_slice(&[ServiceBackends::Software]).unwrap(),
-        }
-    }
-
-    pub fn add_backend(&mut self, backend: ServiceBackends<B>) -> &ClientContextBuilder<B> {
-        self.backends.insert(0, backend).unwrap();
-        self
-    }
-
-    pub fn build(&self) -> ClientContext<B> {
-        ClientContext::new(self.path.clone(), self.backends.clone())
-    }
-}
-
 /**
 This enum collects the available "system call" service backends.
 Each of these backends is supposed to be self-sufficient (i.e. not reliant
