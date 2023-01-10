@@ -6,7 +6,10 @@
 mod store;
 mod ui;
 
-use std::{path::PathBuf, sync::Mutex};
+use std::{
+    path::PathBuf,
+    sync::{Mutex, MutexGuard},
+};
 
 use rand_chacha::ChaCha8Rng;
 use rand_core::SeedableRng as _;
@@ -14,9 +17,10 @@ use rand_core::SeedableRng as _;
 use crate::{
     api::{Reply, Request},
     error::Error,
-    pipe::CLIENT_COUNT,
+    pipe::{TrussedInterchange, CLIENT_COUNT},
     platform,
     service::Service,
+    types::ServiceBackend,
     ClientImplementation, Interchange as _,
 };
 
@@ -24,13 +28,13 @@ pub use store::{Filesystem, Ram, StoreProvider};
 pub use ui::UserInterface;
 
 interchange::interchange! {
-    TrussedInterchange: (Request<()>, Result<Reply, Error>, CLIENT_COUNT)
+    SimpleInterchange: (Request<()>, Result<Reply, Error>, CLIENT_COUNT)
 }
 
-pub type Client<S> = ClientImplementation<TrussedInterchange, Service<Platform<S>>>;
+pub type Client<S> = ClientImplementation<SimpleInterchange, Service<Platform<S>>>;
 
 // We need this mutex to make sure that:
-// - TrussedInterchange is not used concurrently
+// - the interchange is not used concurrently
 // - the Store is not used concurrently
 static MUTEX: Mutex<()> = Mutex::new(());
 
@@ -39,19 +43,7 @@ where
     S: StoreProvider,
     F: FnOnce(Platform<S>) -> R,
 {
-    let _guard = MUTEX.lock().unwrap_or_else(|err| err.into_inner());
-    unsafe {
-        TrussedInterchange::reset_claims();
-        store.reset();
-    }
-    // causing a regression again
-    // let rng = chacha20::ChaCha8Rng::from_rng(rand_core::OsRng).unwrap();
-    let platform = Platform {
-        rng: ChaCha8Rng::from_seed([42u8; 32]),
-        _store: store,
-        ui: UserInterface::new(),
-    };
-    f(platform)
+    f(Platform::new(store, ()))
 }
 
 pub fn with_client<S, R, F>(store: S, client_id: &str, f: F) -> R
@@ -59,7 +51,7 @@ where
     S: StoreProvider,
     F: FnOnce(Client<S>) -> R,
 {
-    with_platform(store, |platform| platform.run_client(client_id, f))
+    Platform::new(store, ()).run_client(client_id, f)
 }
 
 pub fn with_fs_client<P, R, F>(internal: P, client_id: &str, f: F) -> R
@@ -67,27 +59,46 @@ where
     P: Into<PathBuf>,
     F: FnOnce(Client<Filesystem>) -> R,
 {
-    with_client(Filesystem::new(internal), client_id, f)
+    Platform::new(Filesystem::new(internal), ()).run_client(client_id, f)
 }
 
 pub fn with_ram_client<R, F>(client_id: &str, f: F) -> R
 where
     F: FnOnce(Client<Ram>) -> R,
 {
-    with_client(Ram::default(), client_id, f)
+    Platform::new(Ram::default(), ()).run_client(client_id, f)
 }
 
-pub struct Platform<S: StoreProvider> {
+pub struct Platform<S: StoreProvider, B = ()> {
     rng: ChaCha8Rng,
     _store: S,
     ui: UserInterface,
+    backends: B,
+    _guard: MutexGuard<'static, ()>,
 }
 
-impl<S: StoreProvider> Platform<S> {
+impl<S: StoreProvider, B: Backends> Platform<S, B> {
+    pub fn new(store: S, backends: B) -> Self {
+        let _guard = MUTEX.lock().unwrap_or_else(|err| err.into_inner());
+        unsafe {
+            B::Interchange::reset_claims();
+            store.reset();
+        }
+        // causing a regression again
+        // let rng = chacha20::ChaCha8Rng::from_rng(rand_core::OsRng).unwrap();
+        Self {
+            rng: ChaCha8Rng::from_seed([42u8; 32]),
+            _store: store,
+            ui: UserInterface::new(),
+            backends,
+            _guard,
+        }
+    }
+
     pub fn run_client<R>(
         self,
         client_id: &str,
-        test: impl FnOnce(ClientImplementation<TrussedInterchange, Service<Self>>) -> R,
+        test: impl FnOnce(ClientImplementation<B::Interchange, Service<Self>>) -> R,
     ) -> R {
         let service = Service::new(self);
         let client = service.try_into_new_client(client_id).unwrap();
@@ -95,9 +106,9 @@ impl<S: StoreProvider> Platform<S> {
     }
 }
 
-unsafe impl<S: StoreProvider> platform::Platform for Platform<S> {
-    type B = ();
-    type I = TrussedInterchange;
+unsafe impl<S: StoreProvider, B: Backends> platform::Platform for Platform<S, B> {
+    type B = B::Backend;
+    type I = B::Interchange;
     type R = ChaCha8Rng;
     type S = S::Store;
     type UI = UserInterface;
@@ -112,5 +123,28 @@ unsafe impl<S: StoreProvider> platform::Platform for Platform<S> {
 
     fn store(&self) -> Self::S {
         unsafe { S::store() }
+    }
+
+    fn backend(&mut self, backend: Self::B) -> Option<&mut dyn ServiceBackend<Self::B>> {
+        self.backends.select(backend)
+    }
+}
+
+pub trait Backends {
+    type Backend: Clone + PartialEq;
+    type Interchange: TrussedInterchange<Self::Backend>;
+
+    fn select(&mut self, backend: Self::Backend) -> Option<&mut dyn ServiceBackend<Self::Backend>>;
+}
+
+impl Backends for () {
+    type Backend = ();
+    type Interchange = SimpleInterchange;
+
+    fn select(
+        &mut self,
+        _backend: Self::Backend,
+    ) -> Option<&mut dyn ServiceBackend<Self::Backend>> {
+        None
     }
 }
