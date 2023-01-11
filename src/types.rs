@@ -230,12 +230,10 @@ pub mod consent {
 // pub type AeadNonce = [u8; 12];
 // pub type AeadTag = [u8; 16];
 
-/**
-The "ClientId" struct is the closest equivalent to a PCB that Trussed
-currently has. Trussed currently uses it to choose the client-specific
-subtree in the filesystem (see docs in src/store.rs) and to maintain
-the walker state of the directory traversal syscalls.
-*/
+// The "ClientContext" struct is the closest equivalent to a PCB that Trussed
+// currently has. Trussed currently uses it to choose the client-specific
+// subtree in the filesystem (see docs in src/store.rs) and to maintain
+// the walker state of the directory traversal syscalls.
 pub struct ClientContext<B> {
     pub path: PathBuf,
     pub backends: Vec<ServiceBackends<B>, 2>,
@@ -268,30 +266,26 @@ impl<B> ClientContext<B> {
     }
 }
 
-/**
-This enum collects the available "system call" service backends.
-Each of these backends is supposed to be self-sufficient (i.e. not reliant
-on another one or on ServiceResources itself) and to implement a subset
-of the API calls.
-
-If a backend requires ownership of a device, that device will be part of
-the customizable part of the macro-constructed Platform struct. If a
-backend further requires parametrization from the client to operate (such as
-a PIN being passed down from an app), this parameter struct should be
-added as payload for that enum variant.
-
-Backends are called from Service::process() under consideration of the
-selection and ordering the calling client has specified in its ClientId.
-*/
+/// This enum collects the available "system call" service backends.
+/// Each of these backends is supposed to be self-sufficient (i.e. not reliant
+/// on another one or on ServiceResources itself) and to implement a subset
+/// of the API calls.
+///
+/// If a backend requires ownership of a device, that device will be part of
+/// the customizable part of the macro-constructed Platform struct. If a
+/// backend further requires parametrization from the client to operate (such as
+/// a PIN being passed down from an app), this parameter struct should be
+/// added as payload for that enum variant.
+///
+/// Backends are called from Service::process() under consideration of the
+/// selection and ordering the calling client has specified in its ClientContext.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub enum ServiceBackends<B> {
     Software,
     Custom(B),
 }
 
-/**
-Each service backend implements a subset of API calls through this trait.
-*/
+/// Each service backend implements a subset of API calls through this trait.
 pub trait ServiceBackend<B> {
     fn reply_to(
         &mut self,
