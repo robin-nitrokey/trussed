@@ -336,75 +336,9 @@ pub mod request {
         WriteCertificate:
           - location: Location
           - der: Message
-    }
 
-    // TODO: auto-generate once serde_indexed works for generic structs
-
-    #[derive(Clone, Eq, PartialEq, Debug)]
-    pub struct SetServiceBackends<B> {
-        pub backends: Vec<ServiceBackends<B>, 2>,
-    }
-
-    impl<B> From<SetServiceBackends<B>> for Request<B> {
-        fn from(request: SetServiceBackends<B>) -> Self {
-            Self::SetServiceBackends(request)
-        }
-    }
-
-    impl<'de, B: serde::Deserialize<'de>> serde::Deserialize<'de> for SetServiceBackends<B> {
-        fn deserialize<D>(deserializer: D) -> core::result::Result<Self, D::Error>
-        where
-            D: serde::Deserializer<'de>,
-        {
-            struct IndexedVisitor<B>(core::marker::PhantomData<B>);
-            impl<'de, B: serde::Deserialize<'de>> serde::de::Visitor<'de> for IndexedVisitor<B> {
-                type Value = SetServiceBackends<B>;
-                fn expecting(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
-                    formatter.write_str("SetServiceBackends")
-                }
-                fn visit_map<V>(
-                    self,
-                    mut map: V,
-                ) -> core::result::Result<SetServiceBackends<B>, V::Error>
-                where
-                    V: serde::de::MapAccess<'de>,
-                {
-                    let mut backends = None;
-                    while let Some(__serde_indexed_internal_key) = map.next_key()? {
-                        match __serde_indexed_internal_key {
-                            0usize => {
-                                if backends.is_some() {
-                                    return Err(serde::de::Error::duplicate_field("backends"));
-                                }
-                                backends = Some(map.next_value()?);
-                            }
-                            _ => {
-                                return Err(serde::de::Error::duplicate_field(
-                                    "inexistent field index",
-                                ));
-                            }
-                        }
-                    }
-                    let backends =
-                        backends.ok_or_else(|| serde::de::Error::missing_field("backends"))?;
-                    Ok(SetServiceBackends { backends })
-                }
-            }
-            deserializer.deserialize_map(IndexedVisitor(Default::default()))
-        }
-    }
-
-    impl<B: serde::Serialize> serde::Serialize for SetServiceBackends<B> {
-        fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
-        where
-            S: serde::Serializer,
-        {
-            use serde::ser::SerializeMap;
-            let num_fields = 0 + 1;
-            let mut map = serializer.serialize_map(Some(num_fields))?;
-            map.serialize_entry(&0usize, &self.backends)?;
-            map.end()
-        }
+        SetServiceBackends<B>:
+          - backends: Vec<ServiceBackends<B>, 2>
     }
 }
 
