@@ -49,7 +49,7 @@ macro_rules! impl_request {
             $(- $name:tt: $type:path)*
     )*)
         => {$(
-    #[derive(Clone, Eq, PartialEq, Debug, serde_indexed::DeserializeIndexed, serde_indexed::SerializeIndexed)]
+    #[derive(Clone, Eq, PartialEq, Debug)]
     pub struct $request$(<$param>)? {
         $(
             pub $name: $type,
