@@ -234,29 +234,27 @@ pub mod consent {
 // currently has. Trussed currently uses it to choose the client-specific
 // subtree in the filesystem (see docs in src/store.rs) and to maintain
 // the walker state of the directory traversal syscalls.
-pub struct ClientContext<B> {
+pub struct ClientContext<B: 'static> {
     pub path: PathBuf,
-    pub backends: Vec<ServiceBackends<B>, 2>,
+    pub backends: &'static [ServiceBackends<B>],
     pub(crate) read_dir_state: Option<ReadDirState>,
     pub(crate) read_dir_files_state: Option<ReadDirFilesState>,
 }
 
-impl<B> From<PathBuf> for ClientContext<B> {
+impl<B: 'static> From<PathBuf> for ClientContext<B> {
     fn from(path: PathBuf) -> Self {
-        let mut backends = Vec::new();
-        backends.push(ServiceBackends::Software).ok().unwrap();
-        Self::new(path, backends)
+        Self::new(path, &[])
     }
 }
 
-impl<B> From<&str> for ClientContext<B> {
+impl<B: 'static> From<&str> for ClientContext<B> {
     fn from(path_str: &str) -> Self {
         PathBuf::from(path_str).into()
     }
 }
 
-impl<B> ClientContext<B> {
-    pub fn new(path: PathBuf, backends: Vec<ServiceBackends<B>, 2>) -> Self {
+impl<B: 'static> ClientContext<B> {
+    pub fn new(path: PathBuf, backends: &'static [ServiceBackends<B>]) -> Self {
         Self {
             path,
             backends,

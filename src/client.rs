@@ -106,11 +106,11 @@ pub trait Client:
 {
 }
 
-impl<B, I: TrussedInterchange<B>, S: Syscall> Client for ClientImplementation<B, I, S> {}
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> Client for ClientImplementation<B, I, S> {}
 
 /// Lowest level interface, use one of the higher level ones.
 pub trait PollClient {
-    type Backend;
+    type Backend: 'static;
 
     fn request<T: From<crate::api::Reply>>(
         &mut self,
@@ -120,7 +120,7 @@ pub trait PollClient {
     fn syscall(&mut self);
     fn set_service_backends(
         &mut self,
-        backends: Vec<ServiceBackends<Self::Backend>, 2>,
+        backends: &'static [ServiceBackends<Self::Backend>],
     ) -> ClientResult<'_, reply::SetServiceBackends, Self>;
 }
 
@@ -190,6 +190,7 @@ where
 
 impl<B, I, S> PollClient for ClientImplementation<B, I, S>
 where
+    B: 'static,
     I: TrussedInterchange<B>,
     S: Syscall,
 {
@@ -252,7 +253,7 @@ where
 
     fn set_service_backends(
         &mut self,
-        backends: Vec<ServiceBackends<B>, 2>,
+        backends: &'static [ServiceBackends<B>],
     ) -> ClientResult<'_, reply::SetServiceBackends, Self> {
         let r = self.request(request::SetServiceBackends { backends })?;
         r.client.syscall();
@@ -260,17 +261,32 @@ where
     }
 }
 
-impl<B, I: TrussedInterchange<B>, S: Syscall> CertificateClient for ClientImplementation<B, I, S> {}
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> CertificateClient
+    for ClientImplementation<B, I, S>
+{
+}
 
-impl<B, I: TrussedInterchange<B>, S: Syscall> CryptoClient for ClientImplementation<B, I, S> {}
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> CryptoClient
+    for ClientImplementation<B, I, S>
+{
+}
 
-impl<B, I: TrussedInterchange<B>, S: Syscall> CounterClient for ClientImplementation<B, I, S> {}
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> CounterClient
+    for ClientImplementation<B, I, S>
+{
+}
 
-impl<B, I: TrussedInterchange<B>, S: Syscall> FilesystemClient for ClientImplementation<B, I, S> {}
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> FilesystemClient
+    for ClientImplementation<B, I, S>
+{
+}
 
-impl<B, I: TrussedInterchange<B>, S: Syscall> ManagementClient for ClientImplementation<B, I, S> {}
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> ManagementClient
+    for ClientImplementation<B, I, S>
+{
+}
 
-impl<B, I: TrussedInterchange<B>, S: Syscall> UiClient for ClientImplementation<B, I, S> {}
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> UiClient for ClientImplementation<B, I, S> {}
 
 /// Read/Write + Delete certificates
 pub trait CertificateClient: PollClient {

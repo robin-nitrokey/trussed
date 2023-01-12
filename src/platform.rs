@@ -59,7 +59,7 @@ pub trait UserInterface {
 // replacing generic parameters with associated types
 // and a macro.
 pub unsafe trait Platform {
-    type B: Clone + Debug + PartialEq;
+    type B: 'static + Debug + PartialEq;
     type I: Interchange<REQUEST = Request<Self::B>, RESPONSE = Result<Reply>> + 'static;
     // temporarily remove CryptoRng bound until HALs come along
     type R: CryptoRng + RngCore;
@@ -69,7 +69,7 @@ pub unsafe trait Platform {
     fn rng(&mut self) -> &mut Self::R;
     fn store(&self) -> Self::S;
     fn user_interface(&mut self) -> &mut Self::UI;
-    fn backend(&mut self, _backend: Self::B) -> Option<&mut dyn ServiceBackend<Self::B>> {
+    fn backend(&mut self, _backend: &Self::B) -> Option<&mut dyn ServiceBackend<Self::B>> {
         None
     }
 }
@@ -119,8 +119,8 @@ macro_rules! platform { (
             self.store
         }
 
-        fn backend(&mut self, backend: Self::B) -> Option<&mut dyn $crate::types::ServiceBackend<Self::B>> {
-            match backend{
+        fn backend(&mut self, backend: &Self::B) -> Option<&mut dyn $crate::types::ServiceBackend<Self::B>> {
+            match backend {
                 $($BackendID => Some(&mut self.$BackendName), );*
                 _ => None,
             }
