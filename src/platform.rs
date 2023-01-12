@@ -7,9 +7,9 @@
 //! TODO: Currently, `Platform::R` lacks the `CryptoRng` bound.
 
 // pub use rand_core::{CryptoRng, RngCore};
-use core::fmt::Debug;
 use crate::api::{Reply, Request};
 use crate::error::Result;
+use core::fmt::Debug;
 use interchange::Interchange;
 
 pub use crate::store::Store;
@@ -69,64 +69,57 @@ pub unsafe trait Platform {
     fn rng(&mut self) -> &mut Self::R;
     fn store(&self) -> Self::S;
     fn user_interface(&mut self) -> &mut Self::UI;
-    fn backend(&mut self, _backend: &Self::B) -> Option<&mut dyn ServiceBackend<Self::B>> {
-        None
-    }
 }
 
 #[macro_export]
-macro_rules! platform { (
+macro_rules! platform {
+    (
     $PlatformName:ident,
     I: $Interchange:ty,
     R: $Rng:ty,
     S: $Store:ty,
     UI: $UserInterface:ty,
-    $($BackendID:pat, $BackendName:ident, $BackendType:ty),*
 ) => {
-
-    /// Platform struct implemented `trussed::Platform`, generated
-    /// by a Trussed-supplied macro at call site, using the platform-specific
-    /// implementations of its components.
-    pub struct $PlatformName {
-        rng: $Rng,
-        store: $Store,
-        user_interface: $UserInterface,
-        $($BackendName: $BackendType),*
-    }
-
-    impl $PlatformName {
-        pub fn new(rng: $Rng, store: $Store, user_interface: $UserInterface, $($BackendName: $BackendType),*) -> Self {
-            Self { rng, store, user_interface, $($BackendName),* }
-        }
-    }
-
-    unsafe impl $crate::platform::Platform for $PlatformName {
-        type B = ();
-        type I = $Interchange;
-        type R = $Rng;
-        type S = $Store;
-        type UI = $UserInterface;
-
-        fn user_interface(&mut self) -> &mut Self::UI {
-            &mut self.user_interface
+        /// Platform struct implemented `trussed::Platform`, generated
+        /// by a Trussed-supplied macro at call site, using the platform-specific
+        /// implementations of its components.
+        pub struct $PlatformName {
+            rng: $Rng,
+            store: $Store,
+            user_interface: $UserInterface,
         }
 
-        fn rng(&mut self) -> &mut Self::R {
-            &mut self.rng
-        }
-
-        fn store(&self) -> Self::S {
-            self.store
-        }
-
-        fn backend(&mut self, backend: &Self::B) -> Option<&mut dyn $crate::types::ServiceBackend<Self::B>> {
-            match backend {
-                $($BackendID => Some(&mut self.$BackendName), );*
-                _ => None,
+        impl $PlatformName {
+            pub fn new(rng: $Rng, store: $Store, user_interface: $UserInterface) -> Self {
+                Self {
+                    rng,
+                    store,
+                    user_interface,
+                }
             }
         }
-    }
-}}
+
+        unsafe impl $crate::platform::Platform for $PlatformName {
+            type B = ();
+            type I = $Interchange;
+            type R = $Rng;
+            type S = $Store;
+            type UI = $UserInterface;
+
+            fn user_interface(&mut self) -> &mut Self::UI {
+                &mut self.user_interface
+            }
+
+            fn rng(&mut self) -> &mut Self::R {
+                &mut self.rng
+            }
+
+            fn store(&self) -> Self::S {
+                self.store
+            }
+        }
+    };
+}
 
 /// Trussed client will call this method when making a Trussed request.
 /// This is intended to trigger a secure context on the platform.

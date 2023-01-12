@@ -187,7 +187,7 @@ macro_rules! setup {
         let pc_interface: UserInterface = Default::default();
 
         let platform = $platform::new(rng, store, pc_interface);
-        let mut trussed: crate::Service<$platform> = crate::service::Service::new(platform);
+        let mut trussed = crate::service::Service::new(platform);
 
         unsafe {
             TrussedInterchange::reset_claims();
@@ -205,7 +205,7 @@ macro_rules! setup {
             pub type TestClient<'a> = crate::ClientImplementation<
                 (),
                 TrussedInterchange,
-                &'a mut crate::Service<$platform>,
+                &'a mut crate::Service<$platform, ()>,
             >;
             TestClient::new(test_trussed_requester, &mut trussed)
         };

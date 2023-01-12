@@ -68,16 +68,18 @@ impl<P: Platform> ServiceResources<P> {
     }
 }
 
-pub struct Service<P>
+pub struct Service<P, B>
 where
     P: Platform,
+    B: Backends<P::B>,
 {
     eps: Vec<ServiceEndpoint<P::B, P::I>, { MAX_SERVICE_CLIENTS::USIZE }>,
     resources: ServiceResources<P>,
+    backends: B,
 }
 
 // need to be able to send crypto service to an interrupt handler
-unsafe impl<P: Platform> Send for Service<P> {}
+unsafe impl<P: Platform, B: Backends<P::B>> Send for Service<P, B> {}
 
 impl<P: Platform> ServiceResources<P> {
     #[inline(never)]
@@ -668,12 +670,19 @@ impl<P: Platform> ServiceResources<P> {
     }
 }
 
-impl<P: Platform> Service<P> {
+impl<P: Platform> Service<P, ()> {
     pub fn new(platform: P) -> Self {
+        Self::with_backends(platform, ())
+    }
+}
+
+impl<P: Platform, B: Backends<P::B>> Service<P, B> {
+    pub fn with_backends(platform: P, backends: B) -> Self {
         let resources = ServiceResources::new(platform);
         Self {
             eps: Vec::new(),
             resources,
+            backends,
         }
     }
 
@@ -701,7 +710,7 @@ impl<P: Platform> Service<P> {
     pub fn try_as_new_client(
         &mut self,
         client_id: &str,
-    ) -> Result<crate::client::ClientImplementation<P::B, P::I, &mut Service<P>>, ()> {
+    ) -> Result<crate::client::ClientImplementation<P::B, P::I, &mut Self>, ()> {
         use interchange::Interchange;
         let (requester, responder) = P::I::claim().ok_or(())?;
         let client_ctx = ClientContext::from(client_id);
@@ -717,7 +726,7 @@ impl<P: Platform> Service<P> {
     pub fn try_into_new_client(
         mut self,
         client_id: &str,
-    ) -> Result<crate::client::ClientImplementation<P::B, P::I, Service<P>>, ()> {
+    ) -> Result<crate::client::ClientImplementation<P::B, P::I, Self>, ()> {
         use interchange::Interchange;
         let (requester, responder) = P::I::claim().ok_or(())?;
         let client_ctx = ClientContext::from(client_id);
@@ -794,7 +803,7 @@ impl<P: Platform> Service<P> {
                                 reply_result = resources.reply_to(&mut ep.client_ctx, &request)
                             }
                             ServiceBackends::Custom(backend) => {
-                                if let Some(backend) = resources.platform.backend(backend) {
+                                if let Some(backend) = self.backends.select(backend) {
                                     reply_result = backend.reply_to(&mut ep.client_ctx, &request);
                                 }
                             }
@@ -837,18 +846,20 @@ impl<P: Platform> Service<P> {
     }
 }
 
-impl<P> crate::client::Syscall for &mut Service<P>
+impl<P, B> crate::client::Syscall for &mut Service<P, B>
 where
     P: Platform,
+    B: Backends<P::B>,
 {
     fn syscall(&mut self) {
         self.process();
     }
 }
 
-impl<P> crate::client::Syscall for Service<P>
+impl<P, B> crate::client::Syscall for Service<P, B>
 where
     P: Platform,
+    B: Backends<P::B>,
 {
     fn syscall(&mut self) {
         self.process();
