@@ -5,14 +5,15 @@ use trussed::{
     client::{FilesystemClient as _, PollClient as _},
     error::Error,
     pipe::CLIENT_COUNT,
-    service::Service,
+    platform,
+    service::{Service, ServiceResources},
     types::{self, ClientContext, Location, Message, PathBuf, ServiceBackend, ServiceBackends},
-    virt::{Platform, Ram},
+    virt::{self, Ram},
     ClientImplementation,
 };
 
-type Client =
-    ClientImplementation<Interchange, Service<Platform<Ram, Interchange, Backend>, Backends>>;
+type Platform = virt::Platform<Ram, Interchange, Backend>;
+type Client = ClientImplementation<Interchange, Service<Platform, Backends>>;
 
 const BACKENDS_TEST: &[ServiceBackends<Backend>] = &[
     ServiceBackends::Custom(Backend::Test),
@@ -29,8 +30,8 @@ struct Backends {
     test: TestBackend,
 }
 
-impl types::Backends<Backend> for Backends {
-    fn select(&mut self, backend: &Backend) -> Option<&mut dyn ServiceBackend<Backend>> {
+impl types::Backends<Platform> for Backends {
+    fn select(&mut self, backend: &Backend) -> Option<&mut dyn ServiceBackend<Platform>> {
         match backend {
             Backend::Test => Some(&mut self.test),
         }
@@ -40,11 +41,12 @@ impl types::Backends<Backend> for Backends {
 #[derive(Default)]
 struct TestBackend;
 
-impl<B> ServiceBackend<B> for TestBackend {
+impl<P: platform::Platform> ServiceBackend<P> for TestBackend {
     fn reply_to(
         &mut self,
-        _client_id: &mut ClientContext<B>,
-        request: &Request<B>,
+        _client_id: &mut ClientContext<P::B>,
+        request: &Request<P::B>,
+        _resources: &mut ServiceResources<P>,
     ) -> Result<Reply, Error> {
         match request {
             Request::ReadFile(_) => {

@@ -96,7 +96,7 @@ impl<S: StoreProvider, I: TrussedInterchange<B>, B: 'static + PartialEq> Platfor
         }
     }
 
-    pub fn run_client<R, Bs: Backends<B>>(
+    pub fn run_client<R, Bs: Backends<Self>>(
         self,
         client_id: &str,
         backends: Bs,

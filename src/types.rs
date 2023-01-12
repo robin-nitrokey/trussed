@@ -22,6 +22,7 @@ use crate::api::{Reply, Request};
 use crate::config::*;
 use crate::error::Error;
 use crate::key::Secrecy;
+use crate::service::ServiceResources;
 use crate::store::filestore::{ReadDirFilesState, ReadDirState};
 
 pub use crate::client::FutureResult;
@@ -284,20 +285,21 @@ pub enum ServiceBackends<B> {
 }
 
 /// Each service backend implements a subset of API calls through this trait.
-pub trait ServiceBackend<B> {
+pub trait ServiceBackend<P: Platform> {
     fn reply_to(
         &mut self,
-        client_id: &mut ClientContext<B>,
-        request: &Request<B>,
+        client_id: &mut ClientContext<P::B>,
+        request: &Request<P::B>,
+        resources: &mut ServiceResources<P>,
     ) -> Result<Reply, Error>;
 }
 
-pub trait Backends<B> {
-    fn select(&mut self, backend: &B) -> Option<&mut dyn ServiceBackend<B>>;
+pub trait Backends<P: Platform> {
+    fn select(&mut self, backend: &P::B) -> Option<&mut dyn ServiceBackend<P>>;
 }
 
-impl<B> Backends<B> for () {
-    fn select(&mut self, _backend: &B) -> Option<&mut dyn ServiceBackend<B>> {
+impl<P: Platform> Backends<P> for () {
+    fn select(&mut self, _backend: &P::B) -> Option<&mut dyn ServiceBackend<P>> {
         None
     }
 }
