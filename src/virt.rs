@@ -125,16 +125,17 @@ unsafe impl<S: StoreProvider, B: Backends> platform::Platform for Platform<S, B>
         unsafe { S::store() }
     }
 
-    fn backend(&mut self, backend: Self::B) -> Option<&mut dyn ServiceBackend<Self::B>> {
+    fn backend(&mut self, backend: &Self::B) -> Option<&mut dyn ServiceBackend<Self::B>> {
         self.backends.select(backend)
     }
 }
 
 pub trait Backends {
-    type Backend: Clone + PartialEq;
+    type Backend: 'static + PartialEq;
     type Interchange: TrussedInterchange<Self::Backend>;
 
-    fn select(&mut self, backend: Self::Backend) -> Option<&mut dyn ServiceBackend<Self::Backend>>;
+    fn select(&mut self, backend: &Self::Backend)
+        -> Option<&mut dyn ServiceBackend<Self::Backend>>;
 }
 
 impl Backends for () {
@@ -143,7 +144,7 @@ impl Backends for () {
 
     fn select(
         &mut self,
-        _backend: Self::Backend,
+        _backend: &Self::Backend,
     ) -> Option<&mut dyn ServiceBackend<Self::Backend>> {
         None
     }

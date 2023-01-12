@@ -101,7 +101,7 @@ pub enum ClientError {
 pub type ClientResult<'c, T, B, C> = core::result::Result<FutureResult<'c, T, B, C>, ClientError>;
 
 /// All-in-one trait bounding on the sub-traits.
-pub trait Client<B>:
+pub trait Client<B: 'static>:
     CertificateClient<B>
     + CryptoClient<B>
     + CounterClient<B>
@@ -111,10 +111,10 @@ pub trait Client<B>:
 {
 }
 
-impl<B, I: TrussedInterchange<B>, S: Syscall> Client<B> for ClientImplementation<I, S> {}
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> Client<B> for ClientImplementation<I, S> {}
 
 /// Lowest level interface, use one of the higher level ones.
-pub trait PollClient<B> {
+pub trait PollClient<B: 'static> {
     fn request<T: From<crate::api::Reply>>(
         &mut self,
         req: impl Into<Request<B>>,
@@ -123,11 +123,11 @@ pub trait PollClient<B> {
     fn syscall(&mut self);
     fn set_service_backends(
         &mut self,
-        backends: Vec<ServiceBackends<B>, 2>,
+        backends: &'static [ServiceBackends<B>],
     ) -> ClientResult<'_, reply::SetServiceBackends, B, Self>;
 }
 
-pub struct FutureResult<'c, T, B, C: ?Sized>
+pub struct FutureResult<'c, T, B: 'static, C: ?Sized>
 where
     C: PollClient<B>,
 {
@@ -137,6 +137,7 @@ where
 
 impl<'c, T, B, C> FutureResult<'c, T, B, C>
 where
+    B: 'static,
     T: From<crate::api::Reply>,
     C: PollClient<B>,
 {
@@ -191,6 +192,7 @@ where
 
 impl<B, I, S> PollClient<B> for ClientImplementation<I, S>
 where
+    B: 'static,
     I: TrussedInterchange<B>,
     S: Syscall,
 {
@@ -251,7 +253,7 @@ where
 
     fn set_service_backends(
         &mut self,
-        backends: Vec<ServiceBackends<B>, 2>,
+        backends: &'static [ServiceBackends<B>],
     ) -> ClientResult<'_, reply::SetServiceBackends, B, Self> {
         let r = self.request(request::SetServiceBackends { backends })?;
         r.client.syscall();
@@ -259,20 +261,35 @@ where
     }
 }
 
-impl<B, I: TrussedInterchange<B>, S: Syscall> CertificateClient<B> for ClientImplementation<I, S> {}
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> CertificateClient<B>
+    for ClientImplementation<I, S>
+{
+}
 
-impl<B, I: TrussedInterchange<B>, S: Syscall> CryptoClient<B> for ClientImplementation<I, S> {}
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> CryptoClient<B>
+    for ClientImplementation<I, S>
+{
+}
 
-impl<B, I: TrussedInterchange<B>, S: Syscall> CounterClient<B> for ClientImplementation<I, S> {}
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> CounterClient<B>
+    for ClientImplementation<I, S>
+{
+}
 
-impl<B, I: TrussedInterchange<B>, S: Syscall> FilesystemClient<B> for ClientImplementation<I, S> {}
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> FilesystemClient<B>
+    for ClientImplementation<I, S>
+{
+}
 
-impl<B, I: TrussedInterchange<B>, S: Syscall> ManagementClient<B> for ClientImplementation<I, S> {}
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> ManagementClient<B>
+    for ClientImplementation<I, S>
+{
+}
 
-impl<B, I: TrussedInterchange<B>, S: Syscall> UiClient<B> for ClientImplementation<I, S> {}
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> UiClient<B> for ClientImplementation<I, S> {}
 
 /// Read/Write + Delete certificates
-pub trait CertificateClient<B>: PollClient<B> {
+pub trait CertificateClient<B: 'static>: PollClient<B> {
     fn delete_certificate(
         &mut self,
         id: CertId,
@@ -308,7 +325,7 @@ pub trait CertificateClient<B>: PollClient<B> {
 }
 
 /// Trussed Client interface that Trussed apps can rely on.
-pub trait CryptoClient<B>: PollClient<B> {
+pub trait CryptoClient<B: 'static>: PollClient<B> {
     // call with any of `crate::api::request::*`
     // fn request<'c>(&'c mut self, req: impl Into<Request>)
     // -> core::result::Result<RawFutureResult<'c, Self>, ClientError>;
@@ -621,7 +638,7 @@ pub trait CryptoClient<B>: PollClient<B> {
 }
 
 /// Create counters, increment existing counters.
-pub trait CounterClient<B>: PollClient<B> {
+pub trait CounterClient<B: 'static>: PollClient<B> {
     fn create_counter(
         &mut self,
         location: Location,
@@ -642,7 +659,7 @@ pub trait CounterClient<B>: PollClient<B> {
 }
 
 /// Read/Write/Delete files, iterate over directories.
-pub trait FilesystemClient<B>: PollClient<B> {
+pub trait FilesystemClient<B: 'static>: PollClient<B> {
     fn debug_dump_store(&mut self) -> ClientResult<'_, reply::DebugDumpStore, B, Self> {
         let r = self.request(request::DebugDumpStore {})?;
         r.client.syscall();
@@ -778,7 +795,7 @@ pub trait FilesystemClient<B>: PollClient<B> {
 }
 
 /// All the other methods that are fit to expose.
-pub trait ManagementClient<B>: PollClient<B> {
+pub trait ManagementClient<B: 'static>: PollClient<B> {
     fn reboot(&mut self, to: reboot::To) -> ClientResult<'_, reply::Reboot, B, Self> {
         let r = self.request(request::Reboot { to })?;
         r.client.syscall();
@@ -793,7 +810,7 @@ pub trait ManagementClient<B>: PollClient<B> {
 }
 
 /// User-interfacing functionality.
-pub trait UiClient<B>: PollClient<B> {
+pub trait UiClient<B: 'static>: PollClient<B> {
     fn confirm_user_present(
         &mut self,
         timeout_milliseconds: u32,

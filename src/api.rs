@@ -337,8 +337,8 @@ pub mod request {
           - location: Location
           - der: Message
 
-        SetServiceBackends<B>:
-          - backends: Vec<ServiceBackends<B>, 2>
+        SetServiceBackends<B: 'static>:
+          - backends: &'static [ServiceBackends<B>]
     }
 }
 

@@ -593,11 +593,10 @@ impl<P: Platform> ServiceResources<P> {
                 /* as long as we don't do backend selection per syscall,
                    reject clients that want to drop the software backend;
 		   otherwise they will never be able to switch again! */
-                if !request.backends.contains(&ServiceBackends::Software) {
+                if !request.backends.is_empty() && !request.backends.contains(&ServiceBackends::Software) {
                     return Err(Error::InternalError);
                 }
-                client_ctx.backends.clear();
-                client_ctx.backends.extend_from_slice(&request.backends).unwrap();
+                client_ctx.backends = request.backends;
                 Ok(Reply::SetServiceBackends(reply::SetServiceBackends {}))
             }
 
@@ -803,20 +802,25 @@ impl<P: Platform> Service<P> {
                 // resources.currently_serving = ep.client_id.clone();
 
                 let mut reply_result = Err(Error::RequestNotAvailable);
-                for backend in ep.client_ctx.backends.clone() {
-                    match backend {
-                        ServiceBackends::Software => {
-                            reply_result = resources.reply_to(&mut ep.client_ctx, &request)
-                        }
-                        ServiceBackends::Custom(backend) => {
-                            if let Some(backend) = resources.platform.backend(backend) {
-                                reply_result = backend.reply_to(&mut ep.client_ctx, &request);
+                if ep.client_ctx.backends.is_empty() {
+                    // empty backend selection = software backend
+                    reply_result = resources.reply_to(&mut ep.client_ctx, &request);
+                } else {
+                    for backend in ep.client_ctx.backends {
+                        match backend {
+                            ServiceBackends::Software => {
+                                reply_result = resources.reply_to(&mut ep.client_ctx, &request)
+                            }
+                            ServiceBackends::Custom(backend) => {
+                                if let Some(backend) = resources.platform.backend(backend) {
+                                    reply_result = backend.reply_to(&mut ep.client_ctx, &request);
+                                }
                             }
                         }
-                    }
 
-                    if reply_result != Err(Error::RequestNotAvailable) {
-                        break;
+                        if reply_result != Err(Error::RequestNotAvailable) {
+                            break;
+                        }
                     }
                 }
 

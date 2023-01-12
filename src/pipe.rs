@@ -8,12 +8,12 @@ use crate::{
     types::ClientContext,
 };
 
-pub trait TrussedInterchange<B>:
+pub trait TrussedInterchange<B: 'static>:
     Interchange<REQUEST = Request<B>, RESPONSE = Result<Reply>> + 'static
 {
 }
 
-impl<B, I: Interchange<REQUEST = Request<B>, RESPONSE = Result<Reply>> + 'static>
+impl<B: 'static, I: Interchange<REQUEST = Request<B>, RESPONSE = Result<Reply>> + 'static>
     TrussedInterchange<B> for I
 {
 }
@@ -56,7 +56,7 @@ cfg_if::cfg_if! {
 // https://xenomai.org/documentation/xenomai-2.4/html/api/group__native__queue.html
 // https://doc.micrium.com/display/osiiidoc/Using+Message+Queues
 
-pub struct ServiceEndpoint<B, I: Interchange + 'static> {
+pub struct ServiceEndpoint<B: 'static, I: Interchange + 'static> {
     pub interchange: Responder<I>,
     // service (trusted) has this, not client (untrusted)
     // used among other things to namespace cryptographic material
