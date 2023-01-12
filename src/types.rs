@@ -292,6 +292,16 @@ pub trait ServiceBackend<B> {
     ) -> Result<Reply, Error>;
 }
 
+pub trait Backends<B> {
+    fn select(&mut self, backend: &B) -> Option<&mut dyn ServiceBackend<B>>;
+}
+
+impl<B> Backends<B> for () {
+    fn select(&mut self, _backend: &B) -> Option<&mut dyn ServiceBackend<B>> {
+        None
+    }
+}
+
 // Object Hierarchy according to Cryptoki
 // - Storage
 //   - Domain parameters
