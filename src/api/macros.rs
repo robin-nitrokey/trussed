@@ -3,7 +3,7 @@ macro_rules! generate_enums {
 
     #[derive(Clone, Eq, PartialEq, Debug)]
     #[allow(clippy::large_enum_variant)]
-    pub enum Request<B> {
+    pub enum Request<B: 'static> {
         DummyRequest, // for testing
         $(
         $which(request::$which$(<$param>)?),
@@ -19,7 +19,7 @@ macro_rules! generate_enums {
         )*
     }
 
-    impl<B> From<&Request<B>> for u8 {
+    impl<B: 'static> From<&Request<B>> for u8 {
         fn from(request: &Request<B>) -> u8 {
             match request {
                 Request::DummyRequest => 0,
@@ -45,18 +45,18 @@ macro_rules! generate_enums {
 
 macro_rules! impl_request {
     ($(
-        $request:ident$(<$param:ident>)?:
-            $(- $name:tt: $type:path)*
+        $request:ident$(<$param:ident$(: $param_lt:lifetime)?>)?:
+            $(- $name:tt: $type:ty)*
     )*)
         => {$(
     #[derive(Clone, Eq, PartialEq, Debug)]
-    pub struct $request$(<$param>)? {
+    pub struct $request$(<$param$(: $param_lt)?>)? {
         $(
             pub $name: $type,
         )*
     }
 
-    impl<B> From<$request$(<$param>)?> for Request<B> {
+    impl<B: 'static> From<$request$(<$param>)?> for Request<B> {
         fn from(request: $request$(<$param>)?) -> Self {
             Self::$request(request)
         }

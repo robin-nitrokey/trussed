@@ -1,6 +1,5 @@
 #![cfg(feature = "virt")]
 
-use heapless::Vec;
 use trussed::{
     api::{reply::ReadFile, Reply, Request},
     client::{FilesystemClient as _, PollClient as _},
@@ -11,6 +10,11 @@ use trussed::{
     virt::{self, Platform, Ram},
     ClientImplementation,
 };
+
+const BACKENDS_TEST: &[ServiceBackends<Backend>] = &[
+    ServiceBackends::Custom(Backend::Test),
+    ServiceBackends::Software,
+];
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Backend {
@@ -26,7 +30,10 @@ impl virt::Backends for Backends {
     type Backend = Backend;
     type Interchange = Interchange;
 
-    fn select(&mut self, backend: Self::Backend) -> Option<&mut dyn ServiceBackend<Self::Backend>> {
+    fn select(
+        &mut self,
+        backend: &Self::Backend,
+    ) -> Option<&mut dyn ServiceBackend<Self::Backend>> {
         match backend {
             Backend::Test => Some(&mut self.test),
         }
@@ -68,12 +75,7 @@ fn override_syscall() {
         let path = PathBuf::from("test");
         assert!(trussed::try_syscall!(client.read_file(Location::Internal, path.clone())).is_err());
 
-        let mut backends = Vec::new();
-        backends
-            .push(ServiceBackends::Custom(Backend::Test))
-            .unwrap();
-        backends.push(ServiceBackends::Software).unwrap();
-        trussed::syscall!(client.set_service_backends(backends));
+        trussed::syscall!(client.set_service_backends(BACKENDS_TEST));
 
         assert_eq!(
             trussed::syscall!(client.read_file(Location::Internal, path)).data,
