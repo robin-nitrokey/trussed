@@ -8,6 +8,7 @@ mod ui;
 
 use std::{
     fmt::Debug,
+    marker::PhantomData,
     path::PathBuf,
     sync::{Mutex, MutexGuard},
 };
@@ -21,8 +22,8 @@ use crate::{
     pipe::{TrussedInterchange, CLIENT_COUNT},
     platform,
     service::Service,
-    types::ServiceBackend,
-    ClientImplementation, Interchange as _,
+    types::Backends,
+    ClientImplementation,
 };
 
 pub use store::{Filesystem, Ram, StoreProvider};
@@ -32,7 +33,7 @@ interchange::interchange! {
     SimpleInterchange: (Request<()>, Result<Reply, Error>, CLIENT_COUNT)
 }
 
-pub type Client<S> = ClientImplementation<(), SimpleInterchange, Service<Platform<S>>>;
+pub type Client<S> = ClientImplementation<(), SimpleInterchange, Service<Platform<S>, ()>>;
 
 // We need this mutex to make sure that:
 // - the interchange is not used concurrently
@@ -44,7 +45,7 @@ where
     S: StoreProvider,
     F: FnOnce(Platform<S>) -> R,
 {
-    f(Platform::new(store, ()))
+    f(Platform::new(store))
 }
 
 pub fn with_client<S, R, F>(store: S, client_id: &str, f: F) -> R
@@ -52,7 +53,7 @@ where
     S: StoreProvider,
     F: FnOnce(Client<S>) -> R,
 {
-    Platform::new(store, ()).run_client(client_id, f)
+    Platform::new(store).run_client(client_id, (), f)
 }
 
 pub fn with_fs_client<P, R, F>(internal: P, client_id: &str, f: F) -> R
@@ -60,29 +61,29 @@ where
     P: Into<PathBuf>,
     F: FnOnce(Client<Filesystem>) -> R,
 {
-    Platform::new(Filesystem::new(internal), ()).run_client(client_id, f)
+    Platform::new(Filesystem::new(internal)).run_client(client_id, (), f)
 }
 
 pub fn with_ram_client<R, F>(client_id: &str, f: F) -> R
 where
     F: FnOnce(Client<Ram>) -> R,
 {
-    Platform::new(Ram::default(), ()).run_client(client_id, f)
+    Platform::new(Ram::default()).run_client(client_id, (), f)
 }
 
-pub struct Platform<S: StoreProvider, B = ()> {
+pub struct Platform<S: StoreProvider, I = SimpleInterchange, B = ()> {
     rng: ChaCha8Rng,
     _store: S,
     ui: UserInterface,
-    backends: B,
     _guard: MutexGuard<'static, ()>,
+    _marker: PhantomData<(I, B)>,
 }
 
-impl<S: StoreProvider, B: Backends> Platform<S, B> {
-    pub fn new(store: S, backends: B) -> Self {
+impl<S: StoreProvider, I: TrussedInterchange<B>, B: 'static + Debug + PartialEq> Platform<S, I, B> {
+    pub fn new(store: S) -> Self {
         let _guard = MUTEX.lock().unwrap_or_else(|err| err.into_inner());
         unsafe {
-            B::Interchange::reset_claims();
+            I::reset_claims();
             store.reset();
         }
         // causing a regression again
@@ -91,25 +92,28 @@ impl<S: StoreProvider, B: Backends> Platform<S, B> {
             rng: ChaCha8Rng::from_seed([42u8; 32]),
             _store: store,
             ui: UserInterface::new(),
-            backends,
             _guard,
+            _marker: Default::default(),
         }
     }
 
-    pub fn run_client<R>(
+    pub fn run_client<R, Bs: Backends<B>>(
         self,
         client_id: &str,
-        test: impl FnOnce(ClientImplementation<B::Backend, B::Interchange, Service<Self>>) -> R,
+        backends: Bs,
+        test: impl FnOnce(ClientImplementation<B, I, Service<Self, Bs>>) -> R,
     ) -> R {
-        let service = Service::new(self);
+        let service = Service::with_backends(self, backends);
         let client = service.try_into_new_client(client_id).unwrap();
         test(client)
     }
 }
 
-unsafe impl<S: StoreProvider, B: Backends> platform::Platform for Platform<S, B> {
-    type B = B::Backend;
-    type I = B::Interchange;
+unsafe impl<S: StoreProvider, I: TrussedInterchange<B>, B: 'static + Debug + PartialEq>
+    platform::Platform for Platform<S, I, B>
+{
+    type B = B;
+    type I = I;
     type R = ChaCha8Rng;
     type S = S::Store;
     type UI = UserInterface;
@@ -124,29 +128,5 @@ unsafe impl<S: StoreProvider, B: Backends> platform::Platform for Platform<S, B>
 
     fn store(&self) -> Self::S {
         unsafe { S::store() }
-    }
-
-    fn backend(&mut self, backend: &Self::B) -> Option<&mut dyn ServiceBackend<Self::B>> {
-        self.backends.select(backend)
-    }
-}
-
-pub trait Backends {
-    type Backend: 'static + Debug + PartialEq;
-    type Interchange: TrussedInterchange<Self::Backend>;
-
-    fn select(&mut self, backend: &Self::Backend)
-        -> Option<&mut dyn ServiceBackend<Self::Backend>>;
-}
-
-impl Backends for () {
-    type Backend = ();
-    type Interchange = SimpleInterchange;
-
-    fn select(
-        &mut self,
-        _backend: &Self::Backend,
-    ) -> Option<&mut dyn ServiceBackend<Self::Backend>> {
-        None
     }
 }
