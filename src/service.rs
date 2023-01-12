@@ -66,12 +66,20 @@ impl<P: Platform> ServiceResources<P> {
             rng_state: None,
         }
     }
+
+    pub fn platform(&self) -> &P {
+        &self.platform
+    }
+
+    pub fn platform_mut(&mut self) -> &mut P {
+        &mut self.platform
+    }
 }
 
 pub struct Service<P, B>
 where
     P: Platform,
-    B: Backends<P::B>,
+    B: Backends<P>,
 {
     eps: Vec<ServiceEndpoint<P::B, P::I>, { MAX_SERVICE_CLIENTS::USIZE }>,
     resources: ServiceResources<P>,
@@ -79,7 +87,7 @@ where
 }
 
 // need to be able to send crypto service to an interrupt handler
-unsafe impl<P: Platform, B: Backends<P::B>> Send for Service<P, B> {}
+unsafe impl<P: Platform, B: Backends<P>> Send for Service<P, B> {}
 
 impl<P: Platform> ServiceResources<P> {
     #[inline(never)]
@@ -694,7 +702,7 @@ impl<P: Platform> Service<P, ()> {
     }
 }
 
-impl<P: Platform, B: Backends<P::B>> Service<P, B> {
+impl<P: Platform, B: Backends<P>> Service<P, B> {
     pub fn with_backends(platform: P, backends: B) -> Self {
         let resources = ServiceResources::new(platform);
         Self {
@@ -822,7 +830,8 @@ impl<P: Platform, B: Backends<P::B>> Service<P, B> {
                             }
                             ServiceBackends::Custom(backend) => {
                                 if let Some(backend) = self.backends.select(backend) {
-                                    reply_result = backend.reply_to(&mut ep.client_ctx, &request);
+                                    reply_result =
+                                        backend.reply_to(&mut ep.client_ctx, &request, resources);
                                 }
                             }
                         }
@@ -867,7 +876,7 @@ impl<P: Platform, B: Backends<P::B>> Service<P, B> {
 impl<P, B> crate::client::Syscall for &mut Service<P, B>
 where
     P: Platform,
-    B: Backends<P::B>,
+    B: Backends<P>,
 {
     fn syscall(&mut self) {
         self.process();
@@ -877,7 +886,7 @@ where
 impl<P, B> crate::client::Syscall for Service<P, B>
 where
     P: Platform,
-    B: Backends<P::B>,
+    B: Backends<P>,
 {
     fn syscall(&mut self) {
         self.process();
