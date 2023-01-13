@@ -713,7 +713,7 @@ impl<P: Platform, B: Backends<P>> Service<P, B> {
         &mut self,
         client_id: &str,
         syscall: S,
-    ) -> Result<crate::client::ClientImplementation<P::I, S>, ()> {
+    ) -> Result<crate::client::ClientImplementation<P::B, P::I, S>, ()> {
         use interchange::Interchange;
         let (requester, responder) = P::I::claim().ok_or(())?;
         let client_ctx = ClientContext::from(client_id);
@@ -730,7 +730,7 @@ impl<P: Platform, B: Backends<P>> Service<P, B> {
     pub fn try_as_new_client(
         &mut self,
         client_id: &str,
-    ) -> Result<crate::client::ClientImplementation<P::I, &mut Self>, ()> {
+    ) -> Result<crate::client::ClientImplementation<P::B, P::I, &mut Self>, ()> {
         use interchange::Interchange;
         let (requester, responder) = P::I::claim().ok_or(())?;
         let client_ctx = ClientContext::from(client_id);
@@ -746,7 +746,7 @@ impl<P: Platform, B: Backends<P>> Service<P, B> {
     pub fn try_into_new_client(
         mut self,
         client_id: &str,
-    ) -> Result<crate::client::ClientImplementation<P::I, Self>, ()> {
+    ) -> Result<crate::client::ClientImplementation<P::B, P::I, Self>, ()> {
         use interchange::Interchange;
         let (requester, responder) = P::I::claim().ok_or(())?;
         let client_ctx = ClientContext::from(client_id);

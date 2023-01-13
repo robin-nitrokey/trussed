@@ -1,14 +1,14 @@
 use super::*;
 
 #[cfg(feature = "aes256-cbc")]
-impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> Aes256Cbc<B> for ClientImplementation<I, S> {}
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> Aes256Cbc for ClientImplementation<B, I, S> {}
 
-pub trait Aes256Cbc<B: 'static>: CryptoClient<B> {
+pub trait Aes256Cbc: CryptoClient {
     fn decrypt_aes256cbc<'c>(
         &'c mut self,
         key: KeyId,
         message: &[u8],
-    ) -> ClientResult<'c, reply::Decrypt, B, Self> {
+    ) -> ClientResult<'c, reply::Decrypt, Self> {
         self.decrypt(Mechanism::Aes256Cbc, key, message, &[], &[], &[])
     }
 
@@ -16,18 +16,18 @@ pub trait Aes256Cbc<B: 'static>: CryptoClient<B> {
         &mut self,
         wrapping_key: KeyId,
         key: KeyId,
-    ) -> ClientResult<'_, reply::WrapKey, B, Self> {
+    ) -> ClientResult<'_, reply::WrapKey, Self> {
         self.wrap_key(Mechanism::Aes256Cbc, wrapping_key, key, &[])
     }
 }
 
 #[cfg(feature = "chacha8-poly1305")]
-impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> Chacha8Poly1305<B>
-    for ClientImplementation<I, S>
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> Chacha8Poly1305
+    for ClientImplementation<B, I, S>
 {
 }
 
-pub trait Chacha8Poly1305<B: 'static>: CryptoClient<B> {
+pub trait Chacha8Poly1305: CryptoClient {
     fn decrypt_chacha8poly1305<'c>(
         &'c mut self,
         key: KeyId,
@@ -35,7 +35,7 @@ pub trait Chacha8Poly1305<B: 'static>: CryptoClient<B> {
         associated_data: &[u8],
         nonce: &[u8],
         tag: &[u8],
-    ) -> ClientResult<'c, reply::Decrypt, B, Self> {
+    ) -> ClientResult<'c, reply::Decrypt, Self> {
         self.decrypt(
             Mechanism::Chacha8Poly1305,
             key,
@@ -52,7 +52,7 @@ pub trait Chacha8Poly1305<B: 'static>: CryptoClient<B> {
         message: &[u8],
         associated_data: &[u8],
         nonce: Option<&[u8; 12]>,
-    ) -> ClientResult<'c, reply::Encrypt, B, Self> {
+    ) -> ClientResult<'c, reply::Encrypt, Self> {
         self.encrypt(
             Mechanism::Chacha8Poly1305,
             key,
@@ -65,7 +65,7 @@ pub trait Chacha8Poly1305<B: 'static>: CryptoClient<B> {
     fn generate_chacha8poly1305_key(
         &mut self,
         persistence: Location,
-    ) -> ClientResult<'_, reply::GenerateKey, B, Self> {
+    ) -> ClientResult<'_, reply::GenerateKey, Self> {
         self.generate_key(
             Mechanism::Chacha8Poly1305,
             StorageAttributes::new().set_persistence(persistence),
@@ -78,7 +78,7 @@ pub trait Chacha8Poly1305<B: 'static>: CryptoClient<B> {
         wrapped_key: &[u8],
         associated_data: &[u8],
         location: Location,
-    ) -> ClientResult<'c, reply::UnwrapKey, B, Self> {
+    ) -> ClientResult<'c, reply::UnwrapKey, Self> {
         self.unwrap_key(
             Mechanism::Chacha8Poly1305,
             wrapping_key,
@@ -93,7 +93,7 @@ pub trait Chacha8Poly1305<B: 'static>: CryptoClient<B> {
         wrapping_key: KeyId,
         key: KeyId,
         associated_data: &[u8],
-    ) -> ClientResult<'c, reply::WrapKey, B, Self> {
+    ) -> ClientResult<'c, reply::WrapKey, Self> {
         self.wrap_key(
             Mechanism::Chacha8Poly1305,
             wrapping_key,
@@ -104,18 +104,18 @@ pub trait Chacha8Poly1305<B: 'static>: CryptoClient<B> {
 }
 
 #[cfg(feature = "hmac-blake2s")]
-impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> HmacBlake2s<B>
-    for ClientImplementation<I, S>
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> HmacBlake2s
+    for ClientImplementation<B, I, S>
 {
 }
 
-pub trait HmacBlake2s<B: 'static>: CryptoClient<B> {
+pub trait HmacBlake2s: CryptoClient {
     fn hmacblake2s_derive_key(
         &mut self,
         base_key: KeyId,
         message: &[u8],
         persistence: Location,
-    ) -> ClientResult<'_, reply::DeriveKey, B, Self> {
+    ) -> ClientResult<'_, reply::DeriveKey, Self> {
         self.derive_key(
             Mechanism::HmacBlake2s,
             base_key,
@@ -128,7 +128,7 @@ pub trait HmacBlake2s<B: 'static>: CryptoClient<B> {
         &'c mut self,
         key: KeyId,
         message: &[u8],
-    ) -> ClientResult<'c, reply::Sign, B, Self> {
+    ) -> ClientResult<'c, reply::Sign, Self> {
         self.sign(
             Mechanism::HmacBlake2s,
             key,
@@ -139,15 +139,15 @@ pub trait HmacBlake2s<B: 'static>: CryptoClient<B> {
 }
 
 #[cfg(feature = "hmac-sha1")]
-impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> HmacSha1<B> for ClientImplementation<I, S> {}
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> HmacSha1 for ClientImplementation<B, I, S> {}
 
-pub trait HmacSha1<B: 'static>: CryptoClient<B> {
+pub trait HmacSha1: CryptoClient {
     fn hmacsha1_derive_key(
         &mut self,
         base_key: KeyId,
         message: &[u8],
         persistence: Location,
-    ) -> ClientResult<'_, reply::DeriveKey, B, Self> {
+    ) -> ClientResult<'_, reply::DeriveKey, Self> {
         self.derive_key(
             Mechanism::HmacSha1,
             base_key,
@@ -160,7 +160,7 @@ pub trait HmacSha1<B: 'static>: CryptoClient<B> {
         &'c mut self,
         key: KeyId,
         message: &[u8],
-    ) -> ClientResult<'c, reply::Sign, B, Self> {
+    ) -> ClientResult<'c, reply::Sign, Self> {
         self.sign(
             Mechanism::HmacSha1,
             key,
@@ -171,18 +171,18 @@ pub trait HmacSha1<B: 'static>: CryptoClient<B> {
 }
 
 #[cfg(feature = "hmac-sha256")]
-impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> HmacSha256<B>
-    for ClientImplementation<I, S>
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> HmacSha256
+    for ClientImplementation<B, I, S>
 {
 }
 
-pub trait HmacSha256<B: 'static>: CryptoClient<B> {
+pub trait HmacSha256: CryptoClient {
     fn hmacsha256_derive_key(
         &mut self,
         base_key: KeyId,
         message: &[u8],
         persistence: Location,
-    ) -> ClientResult<'_, reply::DeriveKey, B, Self> {
+    ) -> ClientResult<'_, reply::DeriveKey, Self> {
         self.derive_key(
             Mechanism::HmacSha256,
             base_key,
@@ -195,7 +195,7 @@ pub trait HmacSha256<B: 'static>: CryptoClient<B> {
         &'c mut self,
         key: KeyId,
         message: &[u8],
-    ) -> ClientResult<'c, reply::Sign, B, Self> {
+    ) -> ClientResult<'c, reply::Sign, Self> {
         self.sign(
             Mechanism::HmacSha256,
             key,
@@ -206,18 +206,18 @@ pub trait HmacSha256<B: 'static>: CryptoClient<B> {
 }
 
 #[cfg(feature = "hmac-sha512")]
-impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> HmacSha512<B>
-    for ClientImplementation<I, S>
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> HmacSha512
+    for ClientImplementation<B, I, S>
 {
 }
 
-pub trait HmacSha512<B: 'static>: CryptoClient<B> {
+pub trait HmacSha512: CryptoClient {
     fn hmacsha512_derive_key(
         &mut self,
         base_key: KeyId,
         message: &[u8],
         persistence: Location,
-    ) -> ClientResult<'_, reply::DeriveKey, B, Self> {
+    ) -> ClientResult<'_, reply::DeriveKey, Self> {
         self.derive_key(
             Mechanism::HmacSha512,
             base_key,
@@ -230,7 +230,7 @@ pub trait HmacSha512<B: 'static>: CryptoClient<B> {
         &'c mut self,
         key: KeyId,
         message: &[u8],
-    ) -> ClientResult<'c, reply::Sign, B, Self> {
+    ) -> ClientResult<'c, reply::Sign, Self> {
         self.sign(
             Mechanism::HmacSha512,
             key,
@@ -241,13 +241,13 @@ pub trait HmacSha512<B: 'static>: CryptoClient<B> {
 }
 
 #[cfg(feature = "ed255")]
-impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> Ed255<B> for ClientImplementation<I, S> {}
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> Ed255 for ClientImplementation<B, I, S> {}
 
-pub trait Ed255<B: 'static>: CryptoClient<B> {
+pub trait Ed255: CryptoClient {
     fn generate_ed255_private_key(
         &mut self,
         persistence: Location,
-    ) -> ClientResult<'_, reply::GenerateKey, B, Self> {
+    ) -> ClientResult<'_, reply::GenerateKey, Self> {
         self.generate_key(
             Mechanism::Ed255,
             StorageAttributes::new().set_persistence(persistence),
@@ -258,7 +258,7 @@ pub trait Ed255<B: 'static>: CryptoClient<B> {
         &mut self,
         private_key: KeyId,
         persistence: Location,
-    ) -> ClientResult<'_, reply::DeriveKey, B, Self> {
+    ) -> ClientResult<'_, reply::DeriveKey, Self> {
         self.derive_key(
             Mechanism::Ed255,
             private_key,
@@ -272,7 +272,7 @@ pub trait Ed255<B: 'static>: CryptoClient<B> {
         serialized_key: &[u8],
         format: KeySerialization,
         attributes: StorageAttributes,
-    ) -> ClientResult<'c, reply::DeserializeKey, B, Self> {
+    ) -> ClientResult<'c, reply::DeserializeKey, Self> {
         self.deserialize_key(Mechanism::Ed255, serialized_key, format, attributes)
     }
 
@@ -280,7 +280,7 @@ pub trait Ed255<B: 'static>: CryptoClient<B> {
         &mut self,
         key: KeyId,
         format: KeySerialization,
-    ) -> ClientResult<'_, reply::SerializeKey, B, Self> {
+    ) -> ClientResult<'_, reply::SerializeKey, Self> {
         self.serialize_key(Mechanism::Ed255, key, format)
     }
 
@@ -288,7 +288,7 @@ pub trait Ed255<B: 'static>: CryptoClient<B> {
         &'c mut self,
         key: KeyId,
         message: &[u8],
-    ) -> ClientResult<'c, reply::Sign, B, Self> {
+    ) -> ClientResult<'c, reply::Sign, Self> {
         self.sign(Mechanism::Ed255, key, message, SignatureSerialization::Raw)
     }
 
@@ -297,7 +297,7 @@ pub trait Ed255<B: 'static>: CryptoClient<B> {
         key: KeyId,
         message: &[u8],
         signature: &[u8],
-    ) -> ClientResult<'c, reply::Verify, B, Self> {
+    ) -> ClientResult<'c, reply::Verify, Self> {
         self.verify(
             Mechanism::Ed255,
             key,
@@ -309,13 +309,13 @@ pub trait Ed255<B: 'static>: CryptoClient<B> {
 }
 
 #[cfg(feature = "p256")]
-impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> P256<B> for ClientImplementation<I, S> {}
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> P256 for ClientImplementation<B, I, S> {}
 
-pub trait P256<B: 'static>: CryptoClient<B> {
+pub trait P256: CryptoClient {
     fn generate_p256_private_key(
         &mut self,
         persistence: Location,
-    ) -> ClientResult<'_, reply::GenerateKey, B, Self> {
+    ) -> ClientResult<'_, reply::GenerateKey, Self> {
         self.generate_key(
             Mechanism::P256,
             StorageAttributes::new().set_persistence(persistence),
@@ -326,7 +326,7 @@ pub trait P256<B: 'static>: CryptoClient<B> {
         &mut self,
         private_key: KeyId,
         persistence: Location,
-    ) -> ClientResult<'_, reply::DeriveKey, B, Self> {
+    ) -> ClientResult<'_, reply::DeriveKey, Self> {
         self.derive_key(
             Mechanism::P256,
             private_key,
@@ -340,7 +340,7 @@ pub trait P256<B: 'static>: CryptoClient<B> {
         serialized_key: &[u8],
         format: KeySerialization,
         attributes: StorageAttributes,
-    ) -> ClientResult<'c, reply::DeserializeKey, B, Self> {
+    ) -> ClientResult<'c, reply::DeserializeKey, Self> {
         self.deserialize_key(Mechanism::P256, serialized_key, format, attributes)
     }
 
@@ -348,7 +348,7 @@ pub trait P256<B: 'static>: CryptoClient<B> {
         &mut self,
         key: KeyId,
         format: KeySerialization,
-    ) -> ClientResult<'_, reply::SerializeKey, B, Self> {
+    ) -> ClientResult<'_, reply::SerializeKey, Self> {
         self.serialize_key(Mechanism::P256, key, format)
     }
 
@@ -363,7 +363,7 @@ pub trait P256<B: 'static>: CryptoClient<B> {
         key: KeyId,
         message: &[u8],
         format: SignatureSerialization,
-    ) -> ClientResult<'c, reply::Sign, B, Self> {
+    ) -> ClientResult<'c, reply::Sign, Self> {
         self.sign(Mechanism::P256, key, message, format)
     }
 
@@ -372,7 +372,7 @@ pub trait P256<B: 'static>: CryptoClient<B> {
         key: KeyId,
         message: &[u8],
         signature: &[u8],
-    ) -> ClientResult<'c, reply::Verify, B, Self> {
+    ) -> ClientResult<'c, reply::Verify, Self> {
         self.verify(
             Mechanism::P256,
             key,
@@ -387,7 +387,7 @@ pub trait P256<B: 'static>: CryptoClient<B> {
         private_key: KeyId,
         public_key: KeyId,
         persistence: Location,
-    ) -> ClientResult<'_, reply::Agree, B, Self> {
+    ) -> ClientResult<'_, reply::Agree, Self> {
         self.agree(
             Mechanism::P256,
             private_key,
@@ -398,13 +398,16 @@ pub trait P256<B: 'static>: CryptoClient<B> {
 }
 
 #[cfg(feature = "rsa2048")]
-impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> Rsa2048Pkcs<B> for ClientImplementation<'_, I, S> {}
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> Rsa2048Pkcs
+    for ClientImplementation<B, I, S>
+{
+}
 
-pub trait Rsa2048Pkcs<B: 'static>: CryptoClient<B> {
+pub trait Rsa2048Pkcs: CryptoClient {
     fn generate_rsa2048pkcs_private_key(
         &mut self,
         persistence: Location,
-    ) -> ClientResult<'_, reply::GenerateKey, B, Self> {
+    ) -> ClientResult<'_, reply::GenerateKey, Self> {
         self.generate_key(
             Mechanism::Rsa2048Pkcs,
             StorageAttributes::new().set_persistence(persistence),
@@ -415,7 +418,7 @@ pub trait Rsa2048Pkcs<B: 'static>: CryptoClient<B> {
         &mut self,
         shared_key: KeyId,
         persistence: Location,
-    ) -> ClientResult<'_, reply::DeriveKey, B, Self> {
+    ) -> ClientResult<'_, reply::DeriveKey, Self> {
         self.derive_key(
             Mechanism::Rsa2048Pkcs,
             shared_key,
@@ -428,7 +431,7 @@ pub trait Rsa2048Pkcs<B: 'static>: CryptoClient<B> {
         &mut self,
         key: KeyId,
         format: KeySerialization,
-    ) -> ClientResult<'_, reply::SerializeKey, B, Self> {
+    ) -> ClientResult<'_, reply::SerializeKey, Self> {
         self.serialize_key(Mechanism::Rsa2048Pkcs, key, format)
     }
 
@@ -437,7 +440,7 @@ pub trait Rsa2048Pkcs<B: 'static>: CryptoClient<B> {
         serialized_key: &[u8],
         format: KeySerialization,
         attributes: StorageAttributes,
-    ) -> ClientResult<'c, reply::DeserializeKey, B, Self> {
+    ) -> ClientResult<'c, reply::DeserializeKey, Self> {
         self.deserialize_key(Mechanism::Rsa2048Pkcs, serialized_key, format, attributes)
     }
 
@@ -445,7 +448,7 @@ pub trait Rsa2048Pkcs<B: 'static>: CryptoClient<B> {
         &'c mut self,
         key: KeyId,
         message: &[u8],
-    ) -> ClientResult<'c, reply::Sign, B, Self> {
+    ) -> ClientResult<'c, reply::Sign, Self> {
         self.sign(
             Mechanism::Rsa2048Pkcs,
             key,
@@ -459,7 +462,7 @@ pub trait Rsa2048Pkcs<B: 'static>: CryptoClient<B> {
         key: KeyId,
         message: &[u8],
         signature: &[u8],
-    ) -> ClientResult<'c, reply::Verify, B, Self> {
+    ) -> ClientResult<'c, reply::Verify, Self> {
         self.verify(
             Mechanism::Rsa2048Pkcs,
             key,
@@ -471,13 +474,16 @@ pub trait Rsa2048Pkcs<B: 'static>: CryptoClient<B> {
 }
 
 #[cfg(feature = "rsa4096")]
-impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> Rsa4096Pkcs<B> for ClientImplementation<'_, I, S> {}
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> Rsa4096Pkcs
+    for ClientImplementation<B, I, S>
+{
+}
 
-pub trait Rsa4096Pkcs<B: 'static>: CryptoClient<B> {
+pub trait Rsa4096Pkcs: CryptoClient {
     fn generate_rsa4096pkcs_private_key(
         &mut self,
         persistence: Location,
-    ) -> ClientResult<'_, reply::GenerateKey, B, Self> {
+    ) -> ClientResult<'_, reply::GenerateKey, Self> {
         self.generate_key(
             Mechanism::Rsa4096Pkcs,
             StorageAttributes::new().set_persistence(persistence),
@@ -488,7 +494,7 @@ pub trait Rsa4096Pkcs<B: 'static>: CryptoClient<B> {
         &mut self,
         shared_key: KeyId,
         persistence: Location,
-    ) -> ClientResult<'_, reply::DeriveKey, B, Self> {
+    ) -> ClientResult<'_, reply::DeriveKey, Self> {
         self.derive_key(
             Mechanism::Rsa4096Pkcs,
             shared_key,
@@ -501,7 +507,7 @@ pub trait Rsa4096Pkcs<B: 'static>: CryptoClient<B> {
         &mut self,
         key: KeyId,
         format: KeySerialization,
-    ) -> ClientResult<'_, reply::SerializeKey, B, Self> {
+    ) -> ClientResult<'_, reply::SerializeKey, Self> {
         self.serialize_key(Mechanism::Rsa4096Pkcs, key, format)
     }
 
@@ -510,7 +516,7 @@ pub trait Rsa4096Pkcs<B: 'static>: CryptoClient<B> {
         serialized_key: &[u8],
         format: KeySerialization,
         attributes: StorageAttributes,
-    ) -> ClientResult<'c, reply::DeserializeKey, B, Self> {
+    ) -> ClientResult<'c, reply::DeserializeKey, Self> {
         self.deserialize_key(Mechanism::Rsa4096Pkcs, serialized_key, format, attributes)
     }
 
@@ -518,7 +524,7 @@ pub trait Rsa4096Pkcs<B: 'static>: CryptoClient<B> {
         &'c mut self,
         key: KeyId,
         message: &[u8],
-    ) -> ClientResult<'c, reply::Sign, B, Self> {
+    ) -> ClientResult<'c, reply::Sign, Self> {
         self.sign(
             Mechanism::Rsa4096Pkcs,
             key,
@@ -532,7 +538,7 @@ pub trait Rsa4096Pkcs<B: 'static>: CryptoClient<B> {
         key: KeyId,
         message: &[u8],
         signature: &[u8],
-    ) -> ClientResult<'c, reply::Verify, B, Self> {
+    ) -> ClientResult<'c, reply::Verify, Self> {
         self.verify(
             Mechanism::Rsa4096Pkcs,
             key,
@@ -544,14 +550,14 @@ pub trait Rsa4096Pkcs<B: 'static>: CryptoClient<B> {
 }
 
 #[cfg(feature = "sha256")]
-impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> Sha256<B> for ClientImplementation<I, S> {}
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> Sha256 for ClientImplementation<B, I, S> {}
 
-pub trait Sha256<B: 'static>: CryptoClient<B> {
+pub trait Sha256: CryptoClient {
     fn sha256_derive_key(
         &mut self,
         shared_key: KeyId,
         persistence: Location,
-    ) -> ClientResult<'_, reply::DeriveKey, B, Self> {
+    ) -> ClientResult<'_, reply::DeriveKey, Self> {
         self.derive_key(
             Mechanism::Sha256,
             shared_key,
@@ -560,7 +566,7 @@ pub trait Sha256<B: 'static>: CryptoClient<B> {
         )
     }
 
-    fn hash_sha256<'c>(&'c mut self, message: &[u8]) -> ClientResult<'c, reply::Hash, B, Self> {
+    fn hash_sha256<'c>(&'c mut self, message: &[u8]) -> ClientResult<'c, reply::Hash, Self> {
         self.hash(
             Mechanism::Sha256,
             Message::from_slice(message).map_err(|_| ClientError::DataTooLarge)?,
@@ -569,14 +575,14 @@ pub trait Sha256<B: 'static>: CryptoClient<B> {
 }
 
 #[cfg(feature = "tdes")]
-impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> Tdes<B> for ClientImplementation<I, S> {}
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> Tdes for ClientImplementation<B, I, S> {}
 
-pub trait Tdes<B: 'static>: CryptoClient<B> {
+pub trait Tdes: CryptoClient {
     fn decrypt_tdes<'c>(
         &'c mut self,
         key: KeyId,
         message: &[u8],
-    ) -> ClientResult<'c, reply::Decrypt, B, Self> {
+    ) -> ClientResult<'c, reply::Decrypt, Self> {
         self.decrypt(Mechanism::Tdes, key, message, &[], &[], &[])
     }
 
@@ -584,16 +590,16 @@ pub trait Tdes<B: 'static>: CryptoClient<B> {
         &'c mut self,
         key: KeyId,
         message: &[u8],
-    ) -> ClientResult<'c, reply::Encrypt, B, Self> {
+    ) -> ClientResult<'c, reply::Encrypt, Self> {
         self.encrypt(Mechanism::Tdes, key, message, &[], None)
     }
 }
 
 #[cfg(feature = "totp")]
-impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> Totp<B> for ClientImplementation<I, S> {}
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> Totp for ClientImplementation<B, I, S> {}
 
-pub trait Totp<B: 'static>: CryptoClient<B> {
-    fn sign_totp(&mut self, key: KeyId, timestamp: u64) -> ClientResult<'_, reply::Sign, B, Self> {
+pub trait Totp: CryptoClient {
+    fn sign_totp(&mut self, key: KeyId, timestamp: u64) -> ClientResult<'_, reply::Sign, Self> {
         self.sign(
             Mechanism::Totp,
             key,
@@ -604,13 +610,13 @@ pub trait Totp<B: 'static>: CryptoClient<B> {
 }
 
 #[cfg(feature = "x255")]
-impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> X255<B> for ClientImplementation<I, S> {}
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> X255 for ClientImplementation<B, I, S> {}
 
-pub trait X255<B: 'static>: CryptoClient<B> {
+pub trait X255: CryptoClient {
     fn generate_x255_secret_key(
         &mut self,
         persistence: Location,
-    ) -> ClientResult<'_, reply::GenerateKey, B, Self> {
+    ) -> ClientResult<'_, reply::GenerateKey, Self> {
         self.generate_key(
             Mechanism::X255,
             StorageAttributes::new().set_persistence(persistence),
@@ -621,7 +627,7 @@ pub trait X255<B: 'static>: CryptoClient<B> {
         &mut self,
         secret_key: KeyId,
         persistence: Location,
-    ) -> ClientResult<'_, reply::DeriveKey, B, Self> {
+    ) -> ClientResult<'_, reply::DeriveKey, Self> {
         self.derive_key(
             Mechanism::X255,
             secret_key,
@@ -635,7 +641,7 @@ pub trait X255<B: 'static>: CryptoClient<B> {
         private_key: KeyId,
         public_key: KeyId,
         persistence: Location,
-    ) -> ClientResult<'_, reply::Agree, B, Self> {
+    ) -> ClientResult<'_, reply::Agree, Self> {
         self.agree(
             Mechanism::X255,
             private_key,

@@ -32,7 +32,7 @@ interchange::interchange! {
     SimpleInterchange: (Request<()>, Result<Reply, Error>, CLIENT_COUNT)
 }
 
-pub type Client<S> = ClientImplementation<SimpleInterchange, Service<Platform<S>, ()>>;
+pub type Client<S> = ClientImplementation<(), SimpleInterchange, Service<Platform<S>, ()>>;
 
 // We need this mutex to make sure that:
 // - the interchange is not used concurrently
@@ -100,7 +100,7 @@ impl<S: StoreProvider, I: TrussedInterchange<B>, B: 'static + PartialEq> Platfor
         self,
         client_id: &str,
         backends: Bs,
-        test: impl FnOnce(ClientImplementation<I, Service<Self, Bs>>) -> R,
+        test: impl FnOnce(ClientImplementation<B, I, Service<Self, Bs>>) -> R,
     ) -> R {
         let service = Service::new(self, backends);
         let client = service.try_into_new_client(client_id).unwrap();

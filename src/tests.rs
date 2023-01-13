@@ -204,6 +204,7 @@ macro_rules! setup {
         trussed.set_seed_if_uninitialized(&$seed);
         let mut $client = {
             pub type TestClient<'a> = crate::ClientImplementation<
+                (),
                 TrussedInterchange,
                 &'a mut crate::Service<$platform, ()>,
             >;

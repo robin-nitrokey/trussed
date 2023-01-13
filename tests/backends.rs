@@ -13,7 +13,7 @@ use trussed::{
 };
 
 type Platform = virt::Platform<Ram, Interchange, Backend>;
-type Client = ClientImplementation<Interchange, Service<Platform, Backends>>;
+type Client = ClientImplementation<Backend, Interchange, Service<Platform, Backends>>;
 
 const BACKENDS_TEST: &[ServiceBackends<Backend>] = &[
     ServiceBackends::Custom(Backend::Test),
