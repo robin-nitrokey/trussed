@@ -398,13 +398,13 @@ pub trait P256<B: 'static>: CryptoClient<B> {
 }
 
 #[cfg(feature = "rsa2048")]
-impl<S: Syscall> Rsa2048Pkcs for ClientImplementation<S> {}
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> Rsa2048Pkcs<B> for ClientImplementation<'_, I, S> {}
 
-pub trait Rsa2048Pkcs: CryptoClient {
+pub trait Rsa2048Pkcs<B: 'static>: CryptoClient<B> {
     fn generate_rsa2048pkcs_private_key(
         &mut self,
         persistence: Location,
-    ) -> ClientResult<'_, reply::GenerateKey, Self> {
+    ) -> ClientResult<'_, reply::GenerateKey, B, Self> {
         self.generate_key(
             Mechanism::Rsa2048Pkcs,
             StorageAttributes::new().set_persistence(persistence),
@@ -415,7 +415,7 @@ pub trait Rsa2048Pkcs: CryptoClient {
         &mut self,
         shared_key: KeyId,
         persistence: Location,
-    ) -> ClientResult<'_, reply::DeriveKey, Self> {
+    ) -> ClientResult<'_, reply::DeriveKey, B, Self> {
         self.derive_key(
             Mechanism::Rsa2048Pkcs,
             shared_key,
@@ -428,7 +428,7 @@ pub trait Rsa2048Pkcs: CryptoClient {
         &mut self,
         key: KeyId,
         format: KeySerialization,
-    ) -> ClientResult<'_, reply::SerializeKey, Self> {
+    ) -> ClientResult<'_, reply::SerializeKey, B, Self> {
         self.serialize_key(Mechanism::Rsa2048Pkcs, key, format)
     }
 
@@ -437,7 +437,7 @@ pub trait Rsa2048Pkcs: CryptoClient {
         serialized_key: &[u8],
         format: KeySerialization,
         attributes: StorageAttributes,
-    ) -> ClientResult<'c, reply::DeserializeKey, Self> {
+    ) -> ClientResult<'c, reply::DeserializeKey, B, Self> {
         self.deserialize_key(Mechanism::Rsa2048Pkcs, serialized_key, format, attributes)
     }
 
@@ -445,7 +445,7 @@ pub trait Rsa2048Pkcs: CryptoClient {
         &'c mut self,
         key: KeyId,
         message: &[u8],
-    ) -> ClientResult<'c, reply::Sign, Self> {
+    ) -> ClientResult<'c, reply::Sign, B, Self> {
         self.sign(
             Mechanism::Rsa2048Pkcs,
             key,
@@ -459,7 +459,7 @@ pub trait Rsa2048Pkcs: CryptoClient {
         key: KeyId,
         message: &[u8],
         signature: &[u8],
-    ) -> ClientResult<'c, reply::Verify, Self> {
+    ) -> ClientResult<'c, reply::Verify, B, Self> {
         self.verify(
             Mechanism::Rsa2048Pkcs,
             key,
@@ -471,13 +471,13 @@ pub trait Rsa2048Pkcs: CryptoClient {
 }
 
 #[cfg(feature = "rsa4096")]
-impl<S: Syscall> Rsa4096Pkcs for ClientImplementation<S> {}
+impl<B: 'static, I: TrussedInterchange<B>, S: Syscall> Rsa4096Pkcs<B> for ClientImplementation<'_, I, S> {}
 
-pub trait Rsa4096Pkcs: CryptoClient {
+pub trait Rsa4096Pkcs<B: 'static>: CryptoClient<B> {
     fn generate_rsa4096pkcs_private_key(
         &mut self,
         persistence: Location,
-    ) -> ClientResult<'_, reply::GenerateKey, Self> {
+    ) -> ClientResult<'_, reply::GenerateKey, B, Self> {
         self.generate_key(
             Mechanism::Rsa4096Pkcs,
             StorageAttributes::new().set_persistence(persistence),
@@ -488,7 +488,7 @@ pub trait Rsa4096Pkcs: CryptoClient {
         &mut self,
         shared_key: KeyId,
         persistence: Location,
-    ) -> ClientResult<'_, reply::DeriveKey, Self> {
+    ) -> ClientResult<'_, reply::DeriveKey, B, Self> {
         self.derive_key(
             Mechanism::Rsa4096Pkcs,
             shared_key,
@@ -501,7 +501,7 @@ pub trait Rsa4096Pkcs: CryptoClient {
         &mut self,
         key: KeyId,
         format: KeySerialization,
-    ) -> ClientResult<'_, reply::SerializeKey, Self> {
+    ) -> ClientResult<'_, reply::SerializeKey, B, Self> {
         self.serialize_key(Mechanism::Rsa4096Pkcs, key, format)
     }
 
@@ -510,7 +510,7 @@ pub trait Rsa4096Pkcs: CryptoClient {
         serialized_key: &[u8],
         format: KeySerialization,
         attributes: StorageAttributes,
-    ) -> ClientResult<'c, reply::DeserializeKey, Self> {
+    ) -> ClientResult<'c, reply::DeserializeKey, B, Self> {
         self.deserialize_key(Mechanism::Rsa4096Pkcs, serialized_key, format, attributes)
     }
 
@@ -518,7 +518,7 @@ pub trait Rsa4096Pkcs: CryptoClient {
         &'c mut self,
         key: KeyId,
         message: &[u8],
-    ) -> ClientResult<'c, reply::Sign, Self> {
+    ) -> ClientResult<'c, reply::Sign, B, Self> {
         self.sign(
             Mechanism::Rsa4096Pkcs,
             key,
@@ -532,7 +532,7 @@ pub trait Rsa4096Pkcs: CryptoClient {
         key: KeyId,
         message: &[u8],
         signature: &[u8],
-    ) -> ClientResult<'c, reply::Verify, Self> {
+    ) -> ClientResult<'c, reply::Verify, B, Self> {
         self.verify(
             Mechanism::Rsa4096Pkcs,
             key,
