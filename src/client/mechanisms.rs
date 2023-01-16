@@ -386,7 +386,7 @@ pub trait P256: CryptoClient {
 }
 
 #[cfg(feature = "rsa2048")]
-impl<S: Syscall> Rsa2048Pkcs for ClientImplementation<S> {}
+impl<B: 'static, S: Syscall> Rsa2048Pkcs for ClientImplementation<'_, B, S> {}
 
 pub trait Rsa2048Pkcs: CryptoClient {
     fn generate_rsa2048pkcs_private_key(
@@ -459,7 +459,7 @@ pub trait Rsa2048Pkcs: CryptoClient {
 }
 
 #[cfg(feature = "rsa4096")]
-impl<S: Syscall> Rsa4096Pkcs for ClientImplementation<S> {}
+impl<B: 'static, S: Syscall> Rsa4096Pkcs for ClientImplementation<'_, B, S> {}
 
 pub trait Rsa4096Pkcs: CryptoClient {
     fn generate_rsa4096pkcs_private_key(
