@@ -77,11 +77,13 @@
 //!
 use core::{marker::PhantomData, task::Poll};
 
-use interchange::Requester;
+use interchange::{Interchange as _, Requester};
 
 use crate::api::*;
+use crate::backend::{BackendId, Dispatch};
 use crate::error::*;
 use crate::pipe::TrussedInterchange;
+use crate::service::Service;
 use crate::types::*;
 
 pub use crate::platform::Syscall;
@@ -682,6 +684,70 @@ pub trait UiClient: PollClient {
 
     fn wink(&mut self, duration: core::time::Duration) -> ClientResult<'_, reply::Wink, Self> {
         self.request(request::Wink { duration })
+    }
+}
+
+pub struct ClientBuilder<B: 'static = ()> {
+    id: PathBuf,
+    backends: &'static [BackendId<B>],
+}
+
+impl ClientBuilder {
+    pub fn new(id: impl Into<PathBuf>) -> Self {
+        Self {
+            id: id.into(),
+            backends: &[],
+        }
+    }
+}
+
+impl<B: 'static> ClientBuilder<B> {
+    pub fn with_backends<C: 'static>(self, backends: &'static [BackendId<C>]) -> ClientBuilder<C> {
+        ClientBuilder {
+            id: self.id,
+            backends,
+        }
+    }
+
+    #[allow(clippy::result_unit_err)]
+    fn create_endpoint<P: Platform, D: Dispatch<P, BackendId = B>>(
+        self,
+        service: &mut Service<P, D>,
+    ) -> Result<Requester<TrussedInterchange>, ()> {
+        let (requester, responder) = TrussedInterchange::claim().ok_or(())?;
+        let client_ctx = ClientContext::from(self.id);
+        service
+            .add_endpoint(responder, client_ctx, self.backends)
+            .map_err(|_service_endpoint| ())?;
+        Ok(requester)
+    }
+
+    #[allow(clippy::result_unit_err)]
+    pub fn build<P: Platform, D: Dispatch<P, BackendId = B>, S: Syscall>(
+        self,
+        service: &mut Service<P, D>,
+        syscall: S,
+    ) -> Result<ClientImplementation<S>, ()> {
+        self.create_endpoint(service)
+            .map(|requester| ClientImplementation::new(requester, syscall))
+    }
+
+    #[allow(clippy::result_unit_err)]
+    pub fn build_with_service<P: Platform, D: Dispatch<P, BackendId = B>>(
+        self,
+        mut service: Service<P, D>,
+    ) -> Result<ClientImplementation<Service<P, D>>, ()> {
+        self.create_endpoint(&mut service)
+            .map(|requester| ClientImplementation::new(requester, service))
+    }
+
+    #[allow(clippy::result_unit_err)]
+    pub fn build_with_service_mut<P: Platform, D: Dispatch<P, BackendId = B>>(
+        self,
+        service: &mut Service<P, D>,
+    ) -> Result<ClientImplementation<&mut Service<P, D>>, ()> {
+        self.create_endpoint(service)
+            .map(|requester| ClientImplementation::new(requester, service))
     }
 }
 

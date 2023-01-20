@@ -5,6 +5,8 @@ use littlefs2::path::PathBuf;
 pub use rand_core::{RngCore, SeedableRng};
 
 use crate::api::*;
+use crate::backend::{BackendId, Dispatch};
+use crate::client::ClientBuilder;
 use crate::config::*;
 use crate::error::Error;
 pub use crate::key;
@@ -69,16 +71,18 @@ impl<P: Platform> ServiceResources<P> {
     }
 }
 
-pub struct Service<P>
+pub struct Service<P, D = ()>
 where
     P: Platform,
+    D: Dispatch<P>,
 {
-    eps: Vec<ServiceEndpoint, { MAX_SERVICE_CLIENTS::USIZE }>,
+    eps: Vec<ServiceEndpoint<D::BackendId>, { MAX_SERVICE_CLIENTS::USIZE }>,
     resources: ServiceResources<P>,
+    dispatch: D,
 }
 
 // need to be able to send crypto service to an interrupt handler
-unsafe impl<P: Platform> Send for Service<P> {}
+unsafe impl<P: Platform, D: Dispatch<P>> Send for Service<P, D> {}
 
 impl<P: Platform> ServiceResources<P> {
     #[inline(never)]
@@ -660,13 +664,22 @@ impl<P: Platform> ServiceResources<P> {
 
 impl<P: Platform> Service<P> {
     pub fn new(platform: P) -> Self {
+        Self::with_dispatch(platform, ())
+    }
+}
+
+impl<P: Platform, D: Dispatch<P>> Service<P, D> {
+    pub fn with_dispatch(platform: P, dispatch: D) -> Self {
         let resources = ServiceResources::new(platform);
         Self {
             eps: Vec::new(),
             resources,
+            dispatch,
         }
     }
+}
 
+impl<P: Platform> Service<P> {
     /// Add a new client, claiming one of the statically configured
     /// interchange pairs.
     #[allow(clippy::result_unit_err)]
@@ -675,13 +688,7 @@ impl<P: Platform> Service<P> {
         client_id: &str,
         syscall: S,
     ) -> Result<crate::client::ClientImplementation<S>, ()> {
-        use interchange::Interchange;
-        let (requester, responder) = TrussedInterchange::claim().ok_or(())?;
-        let client_ctx = ClientContext::from(client_id);
-        self.add_endpoint(responder, client_ctx)
-            .map_err(|_service_endpoint| ())?;
-
-        Ok(crate::client::ClientImplementation::new(requester, syscall))
+        ClientBuilder::new(client_id).build(self, syscall)
     }
 
     /// Specialization of `try_new_client`, using `self`'s implementation of `Syscall`
@@ -691,37 +698,28 @@ impl<P: Platform> Service<P> {
     pub fn try_as_new_client(
         &mut self,
         client_id: &str,
-    ) -> Result<crate::client::ClientImplementation<&mut Service<P>>, ()> {
-        use interchange::Interchange;
-        let (requester, responder) = TrussedInterchange::claim().ok_or(())?;
-        let client_ctx = ClientContext::from(client_id);
-        self.add_endpoint(responder, client_ctx)
-            .map_err(|_service_endpoint| ())?;
-
-        Ok(crate::client::ClientImplementation::new(requester, self))
+    ) -> Result<crate::client::ClientImplementation<&mut Self>, ()> {
+        ClientBuilder::new(client_id).build_with_service_mut(self)
     }
 
     /// Similar to [try_as_new_client][Service::try_as_new_client] except that the returning client owns the
     /// Service and is therefore `'static`
     #[allow(clippy::result_unit_err)]
     pub fn try_into_new_client(
-        mut self,
+        self,
         client_id: &str,
-    ) -> Result<crate::client::ClientImplementation<Service<P>>, ()> {
-        use interchange::Interchange;
-        let (requester, responder) = TrussedInterchange::claim().ok_or(())?;
-        let client_ctx = ClientContext::from(client_id);
-        self.add_endpoint(responder, client_ctx)
-            .map_err(|_service_endpoint| ())?;
-
-        Ok(crate::client::ClientImplementation::new(requester, self))
+    ) -> Result<crate::client::ClientImplementation<Self>, ()> {
+        ClientBuilder::new(client_id).build_with_service(self)
     }
+}
 
+impl<P: Platform, D: Dispatch<P>> Service<P, D> {
     pub fn add_endpoint(
         &mut self,
         interchange: Responder<TrussedInterchange>,
         client_ctx: impl Into<ClientContext>,
-    ) -> Result<(), ServiceEndpoint> {
+        backends: &'static [BackendId<D::BackendId>],
+    ) -> Result<(), ServiceEndpoint<D::BackendId>> {
         let client_ctx = client_ctx.into();
         if client_ctx.path == PathBuf::from("trussed") {
             panic!("trussed is a reserved client ID");
@@ -729,6 +727,7 @@ impl<P: Platform> Service<P> {
         self.eps.push(ServiceEndpoint {
             interchange,
             client_ctx,
+            backends,
         })
     }
 
@@ -771,7 +770,24 @@ impl<P: Platform> Service<P> {
                 // #[cfg(test)] println!("service got request: {:?}", &request);
 
                 // resources.currently_serving = ep.client_id.clone();
-                let reply_result = resources.reply_to(&mut ep.client_ctx, &request);
+                let mut reply_result = Err(Error::RequestNotAvailable);
+                if ep.backends.is_empty() {
+                    reply_result = resources.reply_to(&mut ep.client_ctx, &request);
+                } else {
+                    for backend in ep.backends {
+                        reply_result = match backend {
+                            BackendId::Software => resources.reply_to(&mut ep.client_ctx, &request),
+                            BackendId::Custom(id) => {
+                                self.dispatch
+                                    .request(id, &mut ep.client_ctx, &request, resources)
+                            }
+                        };
+
+                        if reply_result != Err(Error::RequestNotAvailable) {
+                            break;
+                        }
+                    }
+                }
 
                 resources
                     .platform
@@ -804,18 +820,20 @@ impl<P: Platform> Service<P> {
     }
 }
 
-impl<P> crate::client::Syscall for &mut Service<P>
+impl<P, D> crate::client::Syscall for &mut Service<P, D>
 where
     P: Platform,
+    D: Dispatch<P>,
 {
     fn syscall(&mut self) {
         self.process();
     }
 }
 
-impl<P> crate::client::Syscall for Service<P>
+impl<P, D> crate::client::Syscall for Service<P, D>
 where
     P: Platform,
+    D: Dispatch<P>,
 {
     fn syscall(&mut self) {
         self.process();
