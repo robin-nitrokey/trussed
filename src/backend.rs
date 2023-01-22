@@ -1,5 +1,5 @@
 use crate::{
-    api::{Reply, Request},
+    api::{reply, request, Reply, Request},
     error::Error,
     platform::Platform,
     service::ServiceResources,
@@ -28,6 +28,7 @@ pub trait Backend<P: Platform> {
 
 pub trait Dispatch<P: Platform> {
     type BackendId: 'static;
+    type ExtensionId: TryFrom<u8, Error = Error>;
     type Context: Default;
 
     fn request(
@@ -40,9 +41,32 @@ pub trait Dispatch<P: Platform> {
         let _ = (backend, ctx, request, resources);
         Err(Error::RequestNotAvailable)
     }
+
+    fn extension_request(
+        &mut self,
+        backend: &Self::BackendId,
+        extension: &Self::ExtensionId,
+        ctx: &mut Context<Self::Context>,
+        request: &request::Extension,
+        resources: &mut ServiceResources<P>,
+    ) -> Result<reply::Extension, Error> {
+        let _ = (backend, extension, ctx, request, resources);
+        Err(Error::RequestNotAvailable)
+    }
 }
 
 impl<P: Platform> Dispatch<P> for () {
-    type BackendId = ();
+    type BackendId = NoId;
+    type ExtensionId = NoId;
     type Context = ();
+}
+
+pub enum NoId {}
+
+impl TryFrom<u8> for NoId {
+    type Error = Error;
+
+    fn try_from(_: u8) -> Result<Self, Self::Error> {
+        Err(Error::InternalError)
+    }
 }

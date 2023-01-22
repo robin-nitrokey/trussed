@@ -2,7 +2,7 @@
 
 use trussed::{
     api::{reply::ReadFile, Reply, Request},
-    backend::{self, Backend as _, BackendId},
+    backend::{self, Backend as _, BackendId, NoId},
     client::FilesystemClient as _,
     error::Error,
     platform,
@@ -13,7 +13,7 @@ use trussed::{
 };
 
 type Platform = virt::Platform<Ram>;
-type Client = ClientImplementation<Service<Platform, Dispatch>>;
+type Client = ClientImplementation<Service<Platform, Dispatch>, Dispatch>;
 
 const BACKENDS_TEST: &[BackendId<Backend>] =
     &[BackendId::Custom(Backend::Test), BackendId::Software];
@@ -29,6 +29,7 @@ struct Dispatch {
 
 impl backend::Dispatch<Platform> for Dispatch {
     type BackendId = Backend;
+    type ExtensionId = NoId;
     type Context = ();
 
     fn request(

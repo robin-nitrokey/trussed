@@ -95,7 +95,7 @@ impl<S: StoreProvider> Platform<S> {
         client_id: &str,
         dispatch: D,
         backends: &'static [BackendId<D::BackendId>],
-        test: impl FnOnce(ClientImplementation<Service<Self, D>>) -> R,
+        test: impl FnOnce(ClientImplementation<Service<Self, D>, D>) -> R,
     ) -> R {
         let service = Service::with_dispatch(self, dispatch);
         let client = ClientBuilder::new(client_id)

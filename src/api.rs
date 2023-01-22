@@ -5,6 +5,7 @@
 //! [pkcs11-v3]: https://docs.oasis-open.org/pkcs11/pkcs11-base/v3.0/pkcs11-base-v3.0.html
 //! [pkcs11-headers]: https://docs.oasis-open.org/pkcs11/pkcs11-base/v3.0/cs01/include/pkcs11-v3.0/
 
+use crate::config::*;
 use crate::types::*;
 use core::hint::unreachable_unchecked;
 use core::time::Duration;
@@ -103,6 +104,7 @@ generate_enums! {
     // Other //
     ///////////
     DebugDumpStore: 0x79
+    Extension: 0xff
 }
 
 pub mod request {
@@ -332,6 +334,11 @@ pub mod request {
           - location: Location
           - der: Message
 
+        // request size is chosen to not exceed the largest standard syscall, Decrypt, so that the
+        // enum does not grow from this variant
+        Extension:
+          - id: u8
+          - request: Bytes<{ 2 * MAX_MESSAGE_LENGTH + 2 * MAX_SHORT_DATA_LENGTH }>
     }
 }
 
@@ -482,5 +489,10 @@ pub mod reply {
 
         WriteCertificate:
           - id: CertId
+
+        // reply size is chosen to not exceed the largest standard syscall, Encrypt, so that the
+        // enum does not grow from this variant
+        Extension:
+          - reply: Bytes<{ MAX_MESSAGE_LENGTH + 2 * MAX_SHORT_DATA_LENGTH }>
     }
 }

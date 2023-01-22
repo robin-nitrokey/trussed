@@ -98,6 +98,7 @@ pub enum ClientError {
     Full,
     Pending,
     DataTooLarge,
+    SerializationFailed,
 }
 
 pub type ClientResult<'c, T, C> = Result<FutureResult<'c, T, C>, ClientError>;
@@ -108,7 +109,7 @@ pub trait Client:
 {
 }
 
-impl<S: Syscall> Client for ClientImplementation<S> {}
+impl<S: Syscall, E> Client for ClientImplementation<S, E> {}
 
 /// Lowest level interface, use one of the higher level ones.
 pub trait PollClient {
@@ -120,7 +121,7 @@ pub struct FutureResult<'c, T, C: ?Sized>
 where
     C: PollClient,
 {
-    client: &'c mut C,
+    pub(crate) client: &'c mut C,
     __: PhantomData<T>,
 }
 
@@ -141,7 +142,7 @@ where
 }
 
 /// The client implementation client applications actually receive.
-pub struct ClientImplementation<S> {
+pub struct ClientImplementation<S, E = ()> {
     // raw: RawClient<Client<S>>,
     syscall: S,
 
@@ -149,6 +150,7 @@ pub struct ClientImplementation<S> {
     pub(crate) interchange: Requester<TrussedInterchange>,
     // pending: Option<Discriminant<Request>>,
     pending: Option<u8>,
+    _marker: PhantomData<E>,
 }
 
 // impl<S> From<(RawClient, S)> for Client<S>
@@ -159,7 +161,7 @@ pub struct ClientImplementation<S> {
 //     }
 // }
 
-impl<S> ClientImplementation<S>
+impl<S, E> ClientImplementation<S, E>
 where
     S: Syscall,
 {
@@ -168,11 +170,12 @@ where
             interchange,
             pending: None,
             syscall,
+            _marker: Default::default(),
         }
     }
 }
 
-impl<S> PollClient for ClientImplementation<S>
+impl<S, E> PollClient for ClientImplementation<S, E>
 where
     S: Syscall,
 {
@@ -226,12 +229,12 @@ where
     }
 }
 
-impl<S: Syscall> CertificateClient for ClientImplementation<S> {}
-impl<S: Syscall> CryptoClient for ClientImplementation<S> {}
-impl<S: Syscall> CounterClient for ClientImplementation<S> {}
-impl<S: Syscall> FilesystemClient for ClientImplementation<S> {}
-impl<S: Syscall> ManagementClient for ClientImplementation<S> {}
-impl<S: Syscall> UiClient for ClientImplementation<S> {}
+impl<S: Syscall, E> CertificateClient for ClientImplementation<S, E> {}
+impl<S: Syscall, E> CryptoClient for ClientImplementation<S, E> {}
+impl<S: Syscall, E> CounterClient for ClientImplementation<S, E> {}
+impl<S: Syscall, E> FilesystemClient for ClientImplementation<S, E> {}
+impl<S: Syscall, E> ManagementClient for ClientImplementation<S, E> {}
+impl<S: Syscall, E> UiClient for ClientImplementation<S, E> {}
 
 /// Read/Write + Delete certificates
 pub trait CertificateClient: PollClient {
@@ -687,12 +690,12 @@ pub trait UiClient: PollClient {
     }
 }
 
-pub struct ClientBuilder<B: 'static = ()> {
+pub struct ClientBuilder<P: Platform, D: Dispatch<P> = ()> {
     id: PathBuf,
-    backends: &'static [BackendId<B>],
+    backends: &'static [BackendId<D::BackendId>],
 }
 
-impl ClientBuilder {
+impl<P: Platform> ClientBuilder<P> {
     pub fn new(id: impl Into<PathBuf>) -> Self {
         Self {
             id: id.into(),
@@ -701,8 +704,11 @@ impl ClientBuilder {
     }
 }
 
-impl<B: 'static> ClientBuilder<B> {
-    pub fn with_backends<C: 'static>(self, backends: &'static [BackendId<C>]) -> ClientBuilder<C> {
+impl<P: Platform, D: Dispatch<P>> ClientBuilder<P, D> {
+    pub fn with_backends<C: Dispatch<P>>(
+        self,
+        backends: &'static [BackendId<C::BackendId>],
+    ) -> ClientBuilder<P, C> {
         ClientBuilder {
             id: self.id,
             backends,
@@ -710,7 +716,7 @@ impl<B: 'static> ClientBuilder<B> {
     }
 
     #[allow(clippy::result_unit_err)]
-    fn create_endpoint<P: Platform, D: Dispatch<P, BackendId = B>>(
+    fn create_endpoint(
         self,
         service: &mut Service<P, D>,
     ) -> Result<Requester<TrussedInterchange>, ()> {
@@ -723,29 +729,29 @@ impl<B: 'static> ClientBuilder<B> {
     }
 
     #[allow(clippy::result_unit_err)]
-    pub fn build<P: Platform, D: Dispatch<P, BackendId = B>, S: Syscall>(
+    pub fn build<S: Syscall>(
         self,
         service: &mut Service<P, D>,
         syscall: S,
-    ) -> Result<ClientImplementation<S>, ()> {
+    ) -> Result<ClientImplementation<S, D>, ()> {
         self.create_endpoint(service)
             .map(|requester| ClientImplementation::new(requester, syscall))
     }
 
     #[allow(clippy::result_unit_err)]
-    pub fn build_with_service<P: Platform, D: Dispatch<P, BackendId = B>>(
+    pub fn build_with_service(
         self,
         mut service: Service<P, D>,
-    ) -> Result<ClientImplementation<Service<P, D>>, ()> {
+    ) -> Result<ClientImplementation<Service<P, D>, D>, ()> {
         self.create_endpoint(&mut service)
             .map(|requester| ClientImplementation::new(requester, service))
     }
 
     #[allow(clippy::result_unit_err)]
-    pub fn build_with_service_mut<P: Platform, D: Dispatch<P, BackendId = B>>(
+    pub fn build_with_service_mut(
         self,
         service: &mut Service<P, D>,
-    ) -> Result<ClientImplementation<&mut Service<P, D>>, ()> {
+    ) -> Result<ClientImplementation<&mut Service<P, D>, D>, ()> {
         self.create_endpoint(service)
             .map(|requester| ClientImplementation::new(requester, service))
     }

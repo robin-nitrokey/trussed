@@ -576,6 +576,10 @@ impl<P: Platform> ServiceResources<P> {
                     .map(|id| Reply::WriteCertificate(reply::WriteCertificate { id } ))
             }
 
+            Request::Extension(_) => {
+                Err(Error::RequestNotAvailable)
+            }
+
             // _ => {
             //     // #[cfg(test)]
             //     // println!("todo: {:?} request!", &request);
@@ -770,15 +774,36 @@ impl<P: Platform, D: Dispatch<P>> Service<P, D> {
                 // #[cfg(test)] println!("service got request: {:?}", &request);
 
                 // resources.currently_serving = ep.client_id.clone();
-                let mut reply_result = Err(Error::RequestNotAvailable);
-                if ep.backends.is_empty() {
-                    reply_result = resources.reply_to(&mut ep.ctx.client, &request);
+                let reply_result = if ep.backends.is_empty() {
+                    resources.reply_to(&mut ep.ctx.client, &request)
                 } else {
+                    let mut reply_result = Err(Error::RequestNotAvailable);
                     for backend in ep.backends {
-                        reply_result = match backend {
-                            BackendId::Software => resources.reply_to(&mut ep.ctx.client, &request),
-                            BackendId::Custom(id) => {
-                                self.dispatch.request(id, &mut ep.ctx, &request, resources)
+                        reply_result = if let Request::Extension(request) = &request {
+                            if let BackendId::Custom(backend) = backend {
+                                D::ExtensionId::try_from(request.id)
+                                    .and_then(|extension| {
+                                        self.dispatch.extension_request(
+                                            backend,
+                                            &extension,
+                                            &mut ep.ctx,
+                                            request,
+                                            resources,
+                                        )
+                                    })
+                                    .map(Reply::Extension)
+                            } else {
+                                Err(Error::RequestNotAvailable)
+                            }
+                        } else {
+                            match backend {
+                                BackendId::Software => {
+                                    resources.reply_to(&mut ep.ctx.client, &request)
+                                }
+                                BackendId::Custom(backend) => {
+                                    self.dispatch
+                                        .request(backend, &mut ep.ctx, &request, resources)
+                                }
                             }
                         };
 
@@ -786,7 +811,8 @@ impl<P: Platform, D: Dispatch<P>> Service<P, D> {
                             break;
                         }
                     }
-                }
+                    reply_result
+                };
 
                 resources
                     .platform

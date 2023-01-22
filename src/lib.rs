@@ -24,6 +24,7 @@ pub mod backend;
 pub mod client;
 pub mod config;
 pub mod error;
+pub mod ext;
 pub mod key;
 pub mod mechanisms;
 pub mod pipe;
