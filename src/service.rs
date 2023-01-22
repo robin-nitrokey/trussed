@@ -76,7 +76,7 @@ where
     P: Platform,
     D: Dispatch<P>,
 {
-    eps: Vec<ServiceEndpoint<D::BackendId>, { MAX_SERVICE_CLIENTS::USIZE }>,
+    eps: Vec<ServiceEndpoint<D::BackendId, D::Context>, { MAX_SERVICE_CLIENTS::USIZE }>,
     resources: ServiceResources<P>,
     dispatch: D,
 }
@@ -719,14 +719,14 @@ impl<P: Platform, D: Dispatch<P>> Service<P, D> {
         interchange: Responder<TrussedInterchange>,
         client_ctx: impl Into<ClientContext>,
         backends: &'static [BackendId<D::BackendId>],
-    ) -> Result<(), ServiceEndpoint<D::BackendId>> {
+    ) -> Result<(), ServiceEndpoint<D::BackendId, D::Context>> {
         let client_ctx = client_ctx.into();
         if client_ctx.path == PathBuf::from("trussed") {
             panic!("trussed is a reserved client ID");
         }
         self.eps.push(ServiceEndpoint {
             interchange,
-            client_ctx,
+            ctx: client_ctx.into(),
             backends,
         })
     }
@@ -772,14 +772,13 @@ impl<P: Platform, D: Dispatch<P>> Service<P, D> {
                 // resources.currently_serving = ep.client_id.clone();
                 let mut reply_result = Err(Error::RequestNotAvailable);
                 if ep.backends.is_empty() {
-                    reply_result = resources.reply_to(&mut ep.client_ctx, &request);
+                    reply_result = resources.reply_to(&mut ep.ctx.client, &request);
                 } else {
                     for backend in ep.backends {
                         reply_result = match backend {
-                            BackendId::Software => resources.reply_to(&mut ep.client_ctx, &request),
+                            BackendId::Software => resources.reply_to(&mut ep.ctx.client, &request),
                             BackendId::Custom(id) => {
-                                self.dispatch
-                                    .request(id, &mut ep.client_ctx, &request, resources)
+                                self.dispatch.request(id, &mut ep.ctx, &request, resources)
                             }
                         };
 

@@ -233,6 +233,25 @@ pub mod consent {
 // pub type AeadNonce = [u8; 12];
 // pub type AeadTag = [u8; 16];
 
+/// The context for a syscall.
+///
+/// The context stores a state per client used by the standard syscall implementations, see
+/// [`ClientContext`][].  Additionally, backends can define a custom context for their syscall
+/// implementations.
+pub struct Context<B> {
+    pub client: ClientContext,
+    pub backends: B,
+}
+
+impl<B: Default> From<ClientContext> for Context<B> {
+    fn from(client: ClientContext) -> Self {
+        Self {
+            client,
+            backends: B::default(),
+        }
+    }
+}
+
 // The "ClientContext" struct is the closest equivalent to a PCB that Trussed
 // currently has. Trussed currently uses it to choose the client-specific
 // subtree in the filesystem (see docs in src/store.rs) and to maintain
