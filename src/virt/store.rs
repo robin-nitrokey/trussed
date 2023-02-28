@@ -42,6 +42,12 @@ const_ram_storage!(InternalStorage, STORAGE_SIZE);
 const_ram_storage!(ExternalStorage, STORAGE_SIZE);
 const_ram_storage!(VolatileStorage, STORAGE_SIZE);
 
+pub fn vfs() -> Option<&'static [u8]> {
+    unsafe {
+        VOLATILE_STORAGE.as_ref().map(|s| s.buf.as_slice())
+    }
+}
+
 pub struct FilesystemStorage(PathBuf);
 
 impl Storage for FilesystemStorage {

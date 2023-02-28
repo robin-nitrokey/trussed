@@ -19,7 +19,7 @@ use crate::{
     ClientImplementation,
 };
 
-pub use store::{Filesystem, Ram, StoreProvider};
+pub use store::{Filesystem, Ram, StoreProvider, vfs};
 pub use ui::UserInterface;
 
 pub type Client<S, D = CoreOnly> = ClientImplementation<Service<Platform<S>, D>, D>;
