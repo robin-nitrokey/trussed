@@ -78,6 +78,10 @@ pub struct Platform<S: StoreProvider> {
 }
 
 impl<S: StoreProvider> Platform<S> {
+    pub fn set_ui(&mut self, ui: impl Into<Box<dyn platform::UserInterface + Sync + Send>>) {
+        self.ui.set_inner(ui);
+    }
+
     pub fn run_client<R>(
         self,
         client_id: &str,
